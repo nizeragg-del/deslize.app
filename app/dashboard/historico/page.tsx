@@ -77,11 +77,10 @@ export default function CarouselHistoryPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/export-png`, {
+      const res = await fetch('/api/carousel/export', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           html: carousel.html_content,

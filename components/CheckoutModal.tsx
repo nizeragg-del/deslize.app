@@ -35,6 +35,7 @@ export default function CheckoutModal({
   const [hasOrderBump, setHasOrderBump] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch client secret when modal opens or order bump state changes
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function CheckoutModal({
 
     async function initCheckout() {
       setLoading(true)
+      setError(null)
       try {
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
@@ -55,9 +57,11 @@ export default function CheckoutModal({
         if (data.clientSecret) {
           setClientSecret(data.clientSecret)
         } else {
+          setError(data.error || 'Erro ao carregar checkout')
           console.error(data.error || 'Erro ao carregar checkout')
         }
-      } catch (err) {
+      } catch (err: any) {
+        setError(err.message || 'Erro de rede ao carregar checkout')
         console.error('Erro de rede ao carregar checkout:', err)
       } finally {
         setLoading(false)
@@ -188,8 +192,11 @@ export default function CheckoutModal({
               />
             </Elements>
           ) : (
-            <div className="text-center py-8 text-red-500 text-sm">
-              Erro ao inicializar o checkout. Tente novamente mais tarde.
+            <div className="text-center py-8 text-red-500 text-sm font-medium">
+              <p>Não foi possível inicializar o checkout:</p>
+              <p className="text-xs text-red-400 mt-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20 max-w-md mx-auto break-words font-mono">
+                {error || 'Erro desconhecido'}
+              </p>
             </div>
           )}
         </div>
