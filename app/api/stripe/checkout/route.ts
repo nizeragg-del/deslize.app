@@ -55,7 +55,9 @@ export async function POST(req: Request) {
       } else {
         await stripe.invoiceItems.create({
           customer: customerId,
-          price: orderBumpPriceId,
+          pricing: {
+            price: orderBumpPriceId,
+          },
           description: 'Order Bump: +20 Créditos Adicionais',
         })
       }
