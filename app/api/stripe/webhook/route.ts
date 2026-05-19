@@ -78,47 +78,85 @@ export async function POST(req: Request) {
       }
       
       case 'invoice.payment_succeeded': {
-        // Handle subscription renewal
         const invoice = event.data.object as any
         const subscriptionId = invoice.subscription
         const customerId = invoice.customer
 
-        if (invoice.billing_reason === 'subscription_cycle') {
-          // Find user by customerId
+        if (!subscriptionId) break
+
+        // Buscar a assinatura para obter os metadados
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        const userId = subscription.metadata?.userId
+        const plan = subscription.metadata?.plan || 'free'
+        const orderBump = subscription.metadata?.orderBump === 'true'
+
+        if (!userId) {
+          console.warn(`[Webhook] Nenhum userId encontrado nos metadados da assinatura ${subscriptionId}`)
+          break
+        }
+
+        // Determinar créditos base do plano
+        let baseCredits = 0
+        if (plan === 'starter') baseCredits = 30
+        else if (plan === 'pro') baseCredits = 80
+        else if (plan === 'agency') baseCredits = 200
+
+        let creditsToAdd = 0
+        let reason = 'subscription_renewal'
+
+        if (invoice.billing_reason === 'subscription_create') {
+          creditsToAdd = baseCredits + (orderBump ? 20 : 0)
+          reason = 'plan_upgrade'
+        } else if (invoice.billing_reason === 'subscription_cycle') {
+          creditsToAdd = baseCredits
+          reason = 'subscription_renewal'
+        }
+
+        if (creditsToAdd > 0) {
+          // Registrar transação de créditos
+          await supabaseAdmin.from('credit_transactions').insert({
+            user_id: userId,
+            amount: creditsToAdd,
+            reason: reason,
+            stripe_session_id: invoice.id
+          })
+
+          // Obter perfil atual
           const { data: profile } = await supabaseAdmin
             .from('profiles')
-            .select('id, credits')
-            .eq('stripe_customer_id', customerId)
+            .select('credits')
+            .eq('id', userId)
             .single()
 
-          if (profile) {
-            // Get subscription line item to know how many credits
-            const lineItems = invoice.lines.data
-            const priceId = lineItems[0]?.price?.id
+          const currentCredits = profile?.credits || 0
 
-            let creditsToAdd = 0
-            if (priceId === process.env.STRIPE_PRICE_STARTER) creditsToAdd = 30
-            if (priceId === process.env.STRIPE_PRICE_PRO) creditsToAdd = 80
-            if (priceId === process.env.STRIPE_PRICE_AGENCY) creditsToAdd = 200
+          // Atualizar perfil
+          await supabaseAdmin.from('profiles').update({
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            plan: plan,
+            credits: currentCredits + creditsToAdd
+          }).eq('id', userId)
 
-            if (creditsToAdd > 0) {
-              await supabaseAdmin.from('credit_transactions').insert({
-                user_id: profile.id,
-                amount: creditsToAdd,
-                reason: 'subscription_renewal',
-                stripe_session_id: invoice.id
-              })
-
-              const currentCredits = profile.credits || 0
-              
-              await supabaseAdmin.from('profiles').update({
-                credits: currentCredits + creditsToAdd
-              }).eq('id', profile.id)
-            }
-          }
+          console.log(`[Webhook] Processado pagamento para o usuário ${userId}. Plano: ${plan}. Créditos adicionados: ${creditsToAdd}`)
         }
         break
       }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as any
+        const userId = subscription.metadata?.userId
+
+        if (userId) {
+          await supabaseAdmin.from('profiles').update({
+            plan: 'free',
+            stripe_subscription_id: null
+          }).eq('id', userId)
+          console.log(`[Webhook] Assinatura cancelada para o usuário ${userId}. Plano resetado para free.`)
+        }
+        break
+      }
+
 
       default:
         console.log(`Unhandled event type ${event.type}`)

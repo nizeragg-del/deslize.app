@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Check, Loader2, Sparkles } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import CheckoutModal from '@/components/CheckoutModal'
 
 const plans = [
   {
@@ -15,7 +17,6 @@ const plans = [
       'Histórico de 30 dias',
       'Suporte por e-mail'
     ],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || 'price_1xyz_starter', // Mock for dev
     popular: false
   },
   {
@@ -29,7 +30,6 @@ const plans = [
       'Histórico ilimitado',
       'Suporte prioritário'
     ],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_1xyz_pro',
     popular: true
   },
   {
@@ -43,35 +43,29 @@ const plans = [
       'Histórico ilimitado',
       'Suporte prioritário (WhatsApp)'
     ],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY || 'price_1xyz_agency',
     popular: false
   }
 ]
 
-export default function PlansPage() {
-  const [loadingId, setLoadingId] = useState<string | null>(null)
+function PlansContent() {
+  const [selectedPlan, setSelectedPlan] = useState<any>(null)
+  const searchParams = useSearchParams()
+  const planParam = searchParams?.get('plan')
 
-  const handleSubscribe = async (priceId: string) => {
-    setLoadingId(priceId)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId })
-      })
-      const data = await res.json()
-      
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert(data.error || 'Erro ao iniciar checkout')
-        setLoadingId(null)
+  useEffect(() => {
+    if (planParam) {
+      const match = plans.find(p => 
+        p.name.toLowerCase() === planParam.toLowerCase() || 
+        (planParam.toLowerCase() === 'agency' && p.name.toLowerCase() === 'agência')
+      )
+      if (match) {
+        setSelectedPlan(match)
       }
-    } catch (error) {
-      console.error(error)
-      alert('Erro de conexão')
-      setLoadingId(null)
     }
+  }, [planParam])
+
+  const handleSubscribe = (plan: any) => {
+    setSelectedPlan(plan)
   }
 
   return (
@@ -141,23 +135,42 @@ export default function PlansPage() {
             </div>
 
             <button
-              onClick={() => handleSubscribe(plan.priceId)}
-              disabled={loadingId === plan.priceId}
-              className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              onClick={() => handleSubscribe(plan)}
+              className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 plan.popular 
                   ? 'bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90' 
                   : 'bg-white/5 text-white hover:bg-white/10'
               }`}
             >
-              {loadingId === plan.priceId ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</>
-              ) : (
-                'Assinar ' + plan.name
-              )}
+              Assinar {plan.name}
             </button>
           </div>
         ))}
       </div>
+
+      {selectedPlan && (
+        <CheckoutModal
+          isOpen={!!selectedPlan}
+          onClose={() => setSelectedPlan(null)}
+          planKey={selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()}
+          planName={selectedPlan.name}
+          price={selectedPlan.price}
+          credits={selectedPlan.credits}
+        />
+      )}
     </div>
   )
 }
+
+export default function PlansPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-primary)]" />
+      </div>
+    }>
+      <PlansContent />
+    </Suspense>
+  )
+}
+

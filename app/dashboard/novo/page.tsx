@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw, Lock, Zap, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 
@@ -21,9 +21,55 @@ export default function NewCarouselPage() {
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   
+  // Profile state for dynamic credits & plans
+  const [profile, setProfile] = useState<any>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [isUpsellModalOpen, setIsUpsellModalOpen] = useState(false)
+  
   const startXRef = useRef(0)
   const viewportRef = useRef<HTMLDivElement>(null)
   const viewportWidthRef = useRef(0)
+
+  const refreshProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        if (data) {
+          setProfile(data)
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing profile:', err)
+    }
+  };
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          if (data) {
+            setProfile(data)
+          }
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err)
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+    loadProfile()
+  }, [])
 
   const handleStart = (clientX: number) => {
     if (!htmlContent) return
@@ -103,6 +149,7 @@ export default function NewCarouselPage() {
         setHtmlContent(data.html)
         setCarouselId(data.carouselId)
         setCurrentSlide(0)
+        refreshProfile() // Update credits in UI after generation!
       } else {
         alert(data.error || 'Erro ao gerar carrossel')
       }
@@ -150,6 +197,13 @@ export default function NewCarouselPage() {
 
   const handleExport = async () => {
     if (!htmlContent) return
+
+    // INTERCEPT: If plan is free, show the beautiful premium modal instead of calling export
+    if (!profile || profile.plan === 'free') {
+      setIsUpsellModalOpen(true)
+      return
+    }
+
     setLoading(true)
     try {
       // Obter sessão atual para auth no Supabase
@@ -198,12 +252,24 @@ export default function NewCarouselPage() {
     <div className="max-w-6xl mx-auto min-h-[calc(100vh-8rem)] h-auto lg:h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500">
       
       {/* Editor Panel */}
-      <div className="w-full lg:w-1/3 flex flex-col gap-6 h-auto lg:h-full overflow-visible lg:overflow-y-auto pr-2 pb-8">
-        <div>
-          <h1 className="text-2xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">
-            Novo Carrossel
-          </h1>
-          <p className="text-sm text-[var(--text-muted)]">Configure os detalhes e deixe a IA fazer a mágica.</p>
+      <div className="w-full lg:w-1/3 flex flex-col gap-6 h-auto lg:h-full overflow-visible lg:overflow-y-auto pr-2 pb-8 relative">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-1">
+              Novo Carrossel
+            </h1>
+            <p className="text-xs text-[var(--text-muted)]">Configure os detalhes e deixe a IA fazer a mágica.</p>
+          </div>
+          {profile && (
+            <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-right shrink-0">
+              <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
+                Plano {profile.plan === 'free' ? 'Gratuito' : profile.plan.toUpperCase()}
+              </div>
+              <div className="text-xs font-bold text-white font-mono">
+                {profile.credits} {profile.credits === 1 ? 'créd.' : 'créd.'}
+              </div>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleGenerate} className="space-y-6">
@@ -304,6 +370,28 @@ export default function NewCarouselPage() {
             )}
           </button>
         </form>
+
+        {/* Credits Blocker Overlay (Upsell 2) */}
+        {profile && profile.credits <= 0 && !profileLoading && (
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center z-20 border border-white/5 animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-full bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/30 flex items-center justify-center mb-4">
+              <Lock className="w-6 h-6 text-[var(--brand-primary)] animate-pulse" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Créditos Esgotados</h3>
+            <p className="text-xs text-[var(--text-muted)] max-w-[240px] mb-6">
+              {profile.plan === 'free' 
+                ? 'Você atingiu o limite de gerações gratuitas. Faça o upgrade agora para adicionar mais créditos recorrentes!' 
+                : 'Você utilizou todos os seus créditos deste mês. Faça o upgrade ou compre créditos para continuar gerando carrosséis!'
+              }
+            </p>
+            <button
+              onClick={() => window.location.href = '/dashboard/planos'}
+              className="btn-primary py-3 px-6 text-sm font-bold flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_25px_rgba(124,58,237,0.5)] transition-all"
+            >
+              <Zap className="w-4 h-4 text-yellow-300 fill-yellow-300" /> Ver Planos & Créditos
+            </button>
+          </div>
+        )}
 
         {/* Action Panel for adjustments (only visible when generated) */}
         {htmlContent && (
@@ -487,7 +575,7 @@ export default function NewCarouselPage() {
                       key={i} 
                       onClick={() => setCurrentSlide(i)}
                       className={`w-[6px] h-[6px] rounded-full transition-all cursor-pointer ${
-                        currentSlide === i ? 'bg-[#7c3aed] scale-120' : 'bg-white/20 hover:bg-white/40'
+                        currentSlide === i ? 'bg-[#7c3aed]' : 'bg-white/20 hover:bg-white/40'
                       }`}
                     ></div>
                   ))}
@@ -497,6 +585,67 @@ export default function NewCarouselPage() {
           )}
         </div>
       </div>
+
+      {/* Upsell 1 Premium Export Modal */}
+      {isUpsellModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4 animate-in fade-in duration-300">
+          <div className="bg-[#07070D] border border-white/10 rounded-3xl p-8 max-w-md w-full relative overflow-hidden shadow-[0_0_50px_rgba(124,58,237,0.25)] flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
+            {/* Background Glows */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--brand-primary)]/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Glowing Icon Header */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--brand-primary)] to-cyan-500 p-[1px] shadow-[0_0_20px_rgba(124,58,237,0.3)] mb-6">
+              <div className="w-full h-full bg-[#07070D] rounded-2xl flex items-center justify-center">
+                <Zap className="w-8 h-8 text-yellow-400 fill-yellow-400 animate-pulse" />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">
+              Exportação Premium 🚀
+            </h3>
+            
+            <p className="text-sm text-[var(--text-muted)] mb-6">
+              Seu carrossel está pronto e maravilhoso! Mude para o plano <span className="text-white font-semibold">Starter</span> para exportar em alta definição e publicar no seu Instagram.
+            </p>
+
+            {/* Benefit checklist */}
+            <div className="w-full space-y-3 bg-white/5 border border-white/10 rounded-2xl p-5 mb-8 text-left">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Exportação PNG sem limites de downloads</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Mais de 30 créditos recorrentes todo mês</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Estilos visuais exclusivos e Brand Kits extras</span>
+              </div>
+            </div>
+
+            <div className="w-full flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setIsUpsellModalOpen(false)
+                  window.location.href = '/dashboard/planos?plan=starter'
+                }}
+                className="w-full btn-primary py-4 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] transition-all"
+              >
+                Desbloquear Exportações por R$ 29/mês <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setIsUpsellModalOpen(false)}
+                className="w-full py-3 text-xs text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer"
+              >
+                Voltar para o editor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
