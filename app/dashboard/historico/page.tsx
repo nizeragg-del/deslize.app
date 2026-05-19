@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, Eye, Download, Trash2, Calendar, Layout, X, RefreshCw } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
+import JSZip from 'jszip'
 
 export default function CarouselHistoryPage() {
   const [loading, setLoading] = useState(true)
@@ -75,8 +76,6 @@ export default function CarouselHistoryPage() {
   const handleExport = async (carousel: any) => {
     setExportLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
       const res = await fetch('/api/carousel/export', {
         method: 'POST',
         headers: {
@@ -92,17 +91,28 @@ export default function CarouselHistoryPage() {
       const data = await res.json()
       
       if (data.urls && data.urls.length > 0) {
-        data.urls.forEach((url: string, index: number) => {
-          setTimeout(() => {
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${carousel.topic.replace(/\s+/g, '_')}_slide_${index + 1}.png`
-            a.target = '_blank'
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-          }, index * 500)
-        })
+        const zip = new JSZip()
+        
+        // Fetch each slide image and add to the ZIP
+        await Promise.all(
+          data.urls.map(async (url: string, index: number) => {
+            const imgRes = await fetch(url)
+            const blob = await imgRes.blob()
+            zip.file(`slide_${index + 1}.png`, blob)
+          })
+        )
+        
+        // Generate ZIP file and download
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const downloadUrl = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        const filename = `${(carousel.title || 'carrossel').trim().replace(/\s+/g, '_')}.zip`
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(downloadUrl)
       } else {
         alert(data.error || 'Erro ao exportar carrossel')
       }

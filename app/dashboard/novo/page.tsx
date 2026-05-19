@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw, Lock, Zap, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
+import JSZip from 'jszip'
 
 const TOTAL_SLIDES = 7
 
@@ -206,9 +207,6 @@ export default function NewCarouselPage() {
 
     setLoading(true)
     try {
-      // Obter sessão atual para auth no Supabase
-      const { data: { session } } = await supabase.auth.getSession()
-      
       const res = await fetch('/api/carousel/export', {
         method: 'POST',
         headers: {
@@ -224,18 +222,28 @@ export default function NewCarouselPage() {
       const data = await res.json()
       
       if (data.urls && data.urls.length > 0) {
-        // Simple way to download all files: create invisible links and click them
-        data.urls.forEach((url: string, index: number) => {
-          setTimeout(() => {
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `slide_${index + 1}.png`
-            a.target = '_blank'
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-          }, index * 500) // Delay to prevent browser from blocking multiple downloads
-        })
+        const zip = new JSZip()
+        
+        // Fetch each slide image and add to the ZIP
+        await Promise.all(
+          data.urls.map(async (url: string, index: number) => {
+            const imgRes = await fetch(url)
+            const blob = await imgRes.blob()
+            zip.file(`slide_${index + 1}.png`, blob)
+          })
+        )
+        
+        // Generate ZIP file and download
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const downloadUrl = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        const filename = `${(topic || 'carrossel').trim().replace(/\s+/g, '_')}.zip`
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(downloadUrl)
       } else {
         alert(data.error || 'Erro ao exportar carrossel')
       }
