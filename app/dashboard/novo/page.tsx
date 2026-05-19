@@ -49,27 +49,46 @@ export default function NewCarouselPage() {
     }
   };
 
+  // Brands list state
+  const [brands, setBrands] = useState<any[]>([])
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('default')
+
   useEffect(() => {
-    async function loadProfile() {
+    async function loadInitialData() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data } = await supabase
+          // 1. Load Profile
+          const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single()
-          if (data) {
-            setProfile(data)
+          if (profileData) {
+            setProfile(profileData)
+          }
+
+          // 2. Load Brands
+          const { data: brandsData } = await supabase
+            .from('brands')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true })
+          if (brandsData) {
+            setBrands(brandsData)
+            const defaultBrand = brandsData.find(b => b.is_default) || brandsData[0]
+            if (defaultBrand) {
+              setSelectedBrandId(defaultBrand.id)
+            }
           }
         }
       } catch (err) {
-        console.error('Error loading profile:', err)
+        console.error('Error loading initial data:', err)
       } finally {
         setProfileLoading(false)
       }
     }
-    loadProfile()
+    loadInitialData()
   }, [])
 
   const handleStart = (clientX: number) => {
@@ -127,6 +146,9 @@ export default function NewCarouselPage() {
     setLoading(true)
     setHtmlContent(null)
 
+    // Lookup active brand kit
+    const activeBrand = brands.find(b => b.id === selectedBrandId)
+
     try {
       const res = await fetch('/api/carousel/generate', {
         method: 'POST',
@@ -137,7 +159,16 @@ export default function NewCarouselPage() {
           tone,
           visualTheme,
           slideCount: 7,
-          brand: {
+          brand: activeBrand ? {
+            name: activeBrand.name,
+            primaryColor: activeBrand.primary_color,
+            secondaryColor: activeBrand.secondary_color,
+            bgColor: activeBrand.bg_color,
+            fontDisplay: activeBrand.font_display,
+            fontBody: activeBrand.font_body,
+            tagline: activeBrand.tagline,
+            tone: activeBrand.tone
+          } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
             secondaryColor: '#06B6D4'
@@ -166,6 +197,10 @@ export default function NewCarouselPage() {
     if (!htmlContent || !instruction) return
 
     setLoading(true)
+    
+    // Lookup active brand kit
+    const activeBrand = brands.find(b => b.id === selectedBrandId)
+
     try {
       const res = await fetch('/api/carousel/adjust', {
         method: 'POST',
@@ -174,7 +209,16 @@ export default function NewCarouselPage() {
           currentHtml: htmlContent,
           instruction,
           visualTheme,
-          brand: {
+          brand: activeBrand ? {
+            name: activeBrand.name,
+            primaryColor: activeBrand.primary_color,
+            secondaryColor: activeBrand.secondary_color,
+            bgColor: activeBrand.bg_color,
+            fontDisplay: activeBrand.font_display,
+            fontBody: activeBrand.font_body,
+            tagline: activeBrand.tagline,
+            tone: activeBrand.tone
+          } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
             secondaryColor: '#06B6D4'
@@ -359,8 +403,26 @@ export default function NewCarouselPage() {
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Palette className="w-4 h-4" /> Brand Kit
               </label>
-              <select className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--brand-primary)] appearance-none">
-                <option value="default">@suamarca (Principal)</option>
+              <select 
+                value={selectedBrandId}
+                onChange={e => {
+                  const val = e.target.value
+                  setSelectedBrandId(val)
+                  const activeBrand = brands.find(b => b.id === val)
+                  if (activeBrand && activeBrand.tone) {
+                    setTone(activeBrand.tone)
+                  }
+                }}
+                className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--brand-primary)] cursor-pointer"
+              >
+                {brands.map(b => (
+                  <option key={b.id} value={b.id} className="bg-[#111116] text-white">
+                    {b.name} {b.is_default ? '(Padrão)' : ''}
+                  </option>
+                ))}
+                {brands.length === 0 && (
+                  <option value="default" className="bg-[#111116] text-white">@suamarca (Padrão)</option>
+                )}
               </select>
             </div>
           </div>

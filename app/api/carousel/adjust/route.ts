@@ -26,14 +26,35 @@ export async function POST(req: Request) {
 
     const pColor = brand?.primaryColor || '#7C3AED'
     const sColor = brand?.secondaryColor || '#06B6D4'
+    const bgColor = brand?.bgColor || '#0A0A0F'
+    const fontDisplay = brand?.fontDisplay || 'Outfit'
+    const fontBody = brand?.fontBody || 'Inter'
 
-    // Dynamic theme rules for adjustment context
-    let fontHeaderImport = ''
+    // Dynamically load all fonts required: user's custom brand fonts + theme specific fallback fonts
+    const fontsSet = new Set<string>()
+    fontsSet.add(fontDisplay)
+    fontsSet.add(fontBody)
+    
+    if (visualTheme === 'Neon Tech') {
+      fontsSet.add('Space Grotesk')
+      fontsSet.add('Share Tech Mono')
+    } else if (visualTheme === 'Editorial Elegante') {
+      fontsSet.add('Playfair Display')
+      fontsSet.add('Plus Jakarta Sans')
+    } else {
+      fontsSet.add('Outfit')
+      fontsSet.add('Inter')
+    }
+
+    const fontsParam = Array.from(fontsSet)
+      .map(font => `family=${font.replace(/ /g, '+')}:wght@300;400;500;600;700;800`)
+      .join('&')
+    
+    let fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?${fontsParam}&display=swap" rel="stylesheet">`
     let themeStyles = ''
     let themeRules = ''
 
     if (visualTheme === 'Neon Tech') {
-      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">`
       themeStyles = `
         .title-font { font-family: 'Space Grotesk', sans-serif !important; text-transform: uppercase !important; letter-spacing: -1.5px !important; line-height: 1.05 !important; }
         .body-font { font-family: 'Share Tech Mono', monospace !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.8) !important; }
@@ -95,7 +116,6 @@ export async function POST(req: Request) {
         - Os componentes de caixa de texto devem usar a classe .console-panel ou .code-panel para parecerem com consoles de desenvolvimento e terminal high-tech.
       `
     } else if (visualTheme === 'Editorial Elegante') {
-      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">`
       themeStyles = `
         .title-font { font-family: 'Playfair Display', serif !important; letter-spacing: -0.5px !important; line-height: 1.1 !important; }
         .body-font { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.75) !important; }
@@ -125,7 +145,6 @@ export async function POST(req: Request) {
         - As caixas de texto devem usar a classe .quote-box (com borda lateral elegante e fundo vidro).
       `
     } else { // Mínimo Moderno (Clean)
-      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">`
       themeStyles = `
         .title-font { font-family: 'Outfit', sans-serif !important; letter-spacing: -1.5px !important; line-height: 1.05 !important; }
         .body-font { font-family: 'Inter', sans-serif !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.75) !important; }
@@ -154,6 +173,18 @@ export async function POST(req: Request) {
         - Visual limpo, geométrico e direto.
       `
     }
+
+    // Force exact custom brand kit properties (fonts, background color, gradients) if provided
+    themeStyles += `
+      .title-font { font-family: '${fontDisplay}', sans-serif !important; }
+      .body-font { font-family: '${fontBody}', sans-serif !important; }
+      .ig-slide { background: ${bgColor} !important; }
+      .gradient-span {
+        background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+      }
+    `
 
     let cleanedHtml = currentHtml
     // Strip link tags
