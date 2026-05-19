@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { stripe } from '@/utils/stripe/server'
+import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
@@ -36,13 +36,17 @@ export async function POST(req: Request) {
         let creditsToAdd = 0
         let newPlan = 'free'
 
-        if (priceId === process.env.STRIPE_PRICE_STARTER) {
+        const starterPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_STARTER)
+        const proPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_PRO)
+        const agencyPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_AGENCY)
+
+        if (priceId === starterPrice) {
           creditsToAdd = 30
           newPlan = 'starter'
-        } else if (priceId === process.env.STRIPE_PRICE_PRO) {
+        } else if (priceId === proPrice) {
           creditsToAdd = 80
           newPlan = 'pro'
-        } else if (priceId === process.env.STRIPE_PRICE_AGENCY) {
+        } else if (priceId === agencyPrice) {
           creditsToAdd = 200
           newPlan = 'agency'
         }

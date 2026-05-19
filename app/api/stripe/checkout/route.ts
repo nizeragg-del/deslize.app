@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { stripe } from '@/utils/stripe/server'
+import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
 import { createClient } from '@/utils/supabase/server'
 
 export async function POST(req: Request) {
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
       const envKey = `STRIPE_PRICE_${planKey.toUpperCase()}`
       priceId = process.env[envKey]
     }
+
+    priceId = sanitizeEnvValue(priceId)
 
     if (!priceId) {
       return NextResponse.json({ error: 'Plano inválido ou ID de preço ausente' }, { status: 400 })
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
 
     // 2. Se o usuário ativou o Order Bump, criamos um item avulso na fatura inicial
     if (hasOrderBump) {
-      const orderBumpPriceId = process.env.STRIPE_PRICE_ORDER_BUMP
+      const orderBumpPriceId = sanitizeEnvValue(process.env.STRIPE_PRICE_ORDER_BUMP)
       if (!orderBumpPriceId) {
         console.error('STRIPE_PRICE_ORDER_BUMP não configurado no .env')
       } else {
