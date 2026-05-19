@@ -1,0 +1,364 @@
+import { NextResponse } from 'next/server'
+import { GoogleGenAI } from '@google/genai'
+import { createClient } from '@/utils/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+export async function POST(req: Request) {
+  try {
+    const supabase = await createClient()
+    
+    // Initialize the SDK inside the request to ensure env variables are populated
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    
+    // Validate authentication
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    // Initialize admin client to bypass RLS for sensitive mutations
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Parse the request body
+    const body = await req.json()
+    const { topic, format = 'standard', tone = 'profissional', visualTheme = 'Mínimo Moderno', slideCount = 7, brand } = body
+
+    if (!topic) {
+      return NextResponse.json({ error: 'O tema (topic) é obrigatório' }, { status: 400 })
+    }
+
+    // Dynamic Fonts and CSS Styles based on the theme
+    let fontHeaderImport = ''
+    let themeStyles = ''
+    let themeRules = ''
+
+    const pColor = brand?.primaryColor || '#7C3AED'
+    const sColor = brand?.secondaryColor || '#06B6D4'
+
+    if (visualTheme === 'Neon Tech') {
+      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">`
+      themeStyles = `
+        .title-font { font-family: 'Space Grotesk', sans-serif !important; text-transform: uppercase !important; letter-spacing: -1.5px !important; line-height: 1.05 !important; }
+        .body-font { font-family: 'Share Tech Mono', monospace !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.8) !important; }
+        .ig-slide { background: #050508 !important; border: 1px solid rgba(255, 255, 255, 0.04) !important; color: #ffffff !important; position: relative; overflow: hidden; }
+        .glow-ambient { 
+          position: absolute; 
+          width: 450px; 
+          height: 450px; 
+          border-radius: 50%; 
+          background: radial-gradient(circle, ${pColor}14 0%, transparent 70%); 
+          filter: blur(130px); 
+          pointer-events: none; 
+          z-index: 1; 
+        }
+        .glow-secondary { 
+          position: absolute; 
+          width: 450px; 
+          height: 450px; 
+          border-radius: 50%; 
+          background: radial-gradient(circle, ${sColor}0B 0%, transparent 70%); 
+          filter: blur(130px); 
+          pointer-events: none; 
+          z-index: 1; 
+        }
+        .gradient-span {
+          background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          text-shadow: 0 0 30px rgba(0, 255, 200, 0.2) !important;
+        }
+        .console-panel {
+          background: rgba(255, 255, 255, 0.01) !important;
+          border: 1px solid rgba(255, 255, 255, 0.05) !important;
+          border-radius: 12px !important;
+          padding: 22px !important;
+          box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.01), 0 10px 30px rgba(0,0,0,0.5) !important;
+          position: relative;
+          z-index: 10;
+        }
+        .code-panel {
+          font-family: 'Share Tech Mono', monospace !important;
+          background: rgba(0, 0, 0, 0.6) !important;
+          border: 1px solid rgba(0, 255, 200, 0.15) !important;
+          border-left: 4px solid ${pColor} !important;
+          border-radius: 8px !important;
+          padding: 16px 20px !important;
+          color: #00FFC8 !important;
+          box-shadow: 0 0 20px rgba(0, 255, 200, 0.05) !important;
+          position: relative;
+          z-index: 10;
+        }
+        .slide-tag { color: #00FFC8 !important; text-shadow: 0 0 10px rgba(0, 255, 200, 0.4) !important; font-family: 'Share Tech Mono', monospace !important; }
+      `
+      themeRules = `
+        ESTILO VISUAL SOLICITADO: NEON TECH (Tecnológico, Futurista, Programador)
+        - Use fontes 'Space Grotesk' para títulos (sempre maiúsculos, letter-spacing de -1.5px) e 'Share Tech Mono' para o corpo.
+        - Fundo digital ultra escuro (#050508) com glows atmosféricos usando as classes .glow-ambient (usando a cor primária ${pColor}) e .glow-secondary (usando a cor secundária ${sColor}). Insira uma div com .glow-ambient no canto superior esquerdo e uma div com .glow-secondary no canto inferior direito para um gradiente de luz espetacular.
+        - Envolva as palavras de destaque nos títulos com <span class="gradient-span">...</span> para aplicar gradiente neon.
+        - Os componentes de caixa de texto devem usar a classe .console-panel ou .code-panel para parecerem com consoles de desenvolvimento e terminal high-tech.
+      `
+    } else if (visualTheme === 'Editorial Elegante') {
+      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">`
+      themeStyles = `
+        .title-font { font-family: 'Playfair Display', serif !important; letter-spacing: -0.5px !important; line-height: 1.1 !important; }
+        .body-font { font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.75) !important; }
+        .ig-slide { background: #0F0E0C !important; border: 1px solid rgba(255, 255, 255, 0.03) !important; color: #F5F2EB !important; position: relative; overflow: hidden; }
+        .slide-tag { font-style: italic !important; font-family: 'Playfair Display', serif !important; text-transform: none !important; letter-spacing: 1px !important; color: ${pColor} !important; }
+        .gradient-span {
+          background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+        }
+        .quote-box { 
+          background: rgba(255, 255, 255, 0.02) !important; 
+          border-left: 3px solid ${pColor} !important; 
+          border-radius: 4px !important; 
+          backdrop-filter: blur(10px) !important;
+          padding: 20px !important;
+          position: relative;
+          z-index: 10;
+        }
+      `
+      themeRules = `
+        ESTILO VISUAL SOLICITADO: EDITORIAL ELEGANTE (Premium, Agência, Sofisticado)
+        - Use fonte serifada 'Playfair Display' para títulos e subtítulos (pode usar itálicos para palavras em destaque) e 'Plus Jakarta Sans' para o corpo.
+        - Fundo elegante escuro (#0F0E0C) com fontes e cores quentes (off-white, dourado, roxo ameixa, pêssego).
+        - Margens internas amplas, visual minimalista de revista de luxo.
+        - Envolva as palavras-chave com <span class="gradient-span">...</span> para destacar com o gradiente da marca.
+        - As caixas de texto devem usar a classe .quote-box (com borda lateral elegante e fundo vidro).
+      `
+    } else { // Mínimo Moderno (Clean)
+      fontHeaderImport = `<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">`
+      themeStyles = `
+        .title-font { font-family: 'Outfit', sans-serif !important; letter-spacing: -1.5px !important; line-height: 1.05 !important; }
+        .body-font { font-family: 'Inter', sans-serif !important; font-weight: 400 !important; line-height: 1.6 !important; color: rgba(255,255,255,0.75) !important; }
+        .ig-slide { background: #0B0B0F !important; border: 1px solid rgba(255, 255, 255, 0.04) !important; color: #F3F4F6 !important; position: relative; overflow: hidden; }
+        .gradient-span {
+          background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+        }
+        .glass-panel { 
+          background: rgba(255, 255, 255, 0.02) !important; 
+          border: 1px solid rgba(255, 255, 255, 0.06) !important; 
+          border-radius: 16px !important; 
+          backdrop-filter: blur(12px) !important; 
+          padding: 22px !important;
+          position: relative;
+          z-index: 10;
+        }
+      `
+      themeRules = `
+        ESTILO VISUAL SOLICITADO: MÍNIMO MODERNO (Clean, Startup, Alto Nível)
+        - Use fonte 'Outfit' para os títulos com letras bem juntas (letter-spacing negativo) e 'Inter' para o corpo.
+        - Fundo escuro premium (#0B0B0F).
+        - Envolva palavras principais do título com <span class="gradient-span">...</span>.
+        - Use caixas de texto modernas com efeito vidro utilizando a classe .glass-panel.
+        - Visual limpo, geométrico e direto.
+      `
+    }
+
+    // Verify credits
+    let { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      const { data: newProfile } = await supabaseAdmin
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || user.email?.split('@')[0] || 'Criador',
+          avatar_url: user.user_metadata?.avatar_url,
+          plan: 'free',
+          credits: 1
+        })
+        .select('credits')
+        .single()
+      
+      if (newProfile) {
+        profile = newProfile
+      } else {
+        return NextResponse.json({ error: 'Erro ao inicializar perfil de usuário.' }, { status: 500 })
+      }
+    }
+
+    if (profile.credits < 1) {
+      return NextResponse.json({ error: 'Créditos insuficientes. Adquira mais créditos para continuar.' }, { status: 403 })
+    }
+
+    // Construct the prompt
+    const prompt = `
+Você é um designer de produto e copywriter especialista em Instagram de altíssimo nível.
+Sua missão é gerar o conteúdo HTML de um carrossel de alta conversão usando as melhores práticas de design.
+
+TEMA PRINCIPAL: "${topic}"
+FORMATO DE CONTEÚDO: ${format}
+TOM DE VOZ: ${tone}
+NÚMERO DE SLIDES: ${slideCount}
+ESTILO VISUAL SOLICITADO: ${visualTheme}
+
+IDENTIDADE DA MARCA:
+- Nome/Handle: ${brand?.name || 'suamarca'}
+- Cor Primária (Destaques e Acentos): ${pColor}
+- Cor Secundária: ${sColor}
+
+${themeRules}
+
+FONTES E ESTILOS GLOBAIS ENVIADOS NO HEAD:
+${fontHeaderImport}
+
+REGRAS DE CONTEXTO E FLUXO:
+1. O primeiro slide (Slide 1 - Hero/Hook) deve ter um impacto visual avassalador:
+   - Use um título monumental com tamanho enorme (font-size: 38px a 44px).
+   - Envolva as palavras-chave mais impactantes em tags <span class="gradient-span"> para aplicar o gradiente brilhante da marca.
+   - Use uma distribuição limpa, deixando espaço para o texto respirar e posicionando dois glows ambientais distantes (ex: um no topo esquerdo e um no canto inferior direito) para dar um efeito de iluminação volumétrica sofisticada de fundo.
+   - NÃO use parágrafos longos ou genéricos de corpo no Slide 1; no máximo uma linha curta ou subtítulo elegante e direto de apoio (ex: "Descubra como em 3 passos rápidos.").
+2. Os slides do meio devem desenvolver o conteúdo de forma escaneável. Evite parágrafos longos. Use listas decoradas, grids lado a lado ou caixas de destaque.
+3. Alterne o ritmo visual: crie layouts ligeiramente diferentes entre os slides (ex: slide 2 com lista, slide 3 com caixa de destaque centralizada, slide 4 com colunas antes/depois, slide 5 com métrica ou citação).
+4. O último slide DEVE conter um CTA marcante (ex: "Salve este post para ler depois" ou "Compartilhe com um amigo") acompanhado do logotipo da marca.
+
+REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
+- Retorne APENAS o código HTML cru das divs de slide. NÃO envolva em tags de bloco Markdown como \`\`\`html.
+- Cada slide deve ser uma div com a classe "ig-slide" consecutiva.
+- Mantenha estritamente estas classes utilitárias no seu HTML para compatibilidade com o leitor:
+  * Contêiner do slide: <div class="ig-slide">
+  * Tag de topo: <div class="slide-tag">SUA TAG</div>
+  * Logo da marca: <div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${brand?.name || 'suamarca'}</span></div>
+  * Título do slide: <div class="slide-h title-font">...</div>
+  * Texto de corpo: <div class="slide-body body-font">...</div>
+  * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
+
+BIBLIOTECA DE ÍCONES (Use estes SVGs limpos no lugar de emojis ou marcadores genéricos):
+- Checkmark verde/marca: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
+- Alerta/Erro: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+- Dica/Lâmpada: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .5 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>
+- Seta direita: <svg class="inline-block w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+
+LAYOUTS EXEMPLARES PARA UTILIZAR NOS SLIDES DO MEIO:
+- Exemplo de Glassmorphism Box:
+  <div class="glass-panel text-white">
+    <div class="font-bold text-sm mb-1">Título do Destaque</div>
+    <div class="text-xs text-white/70">Texto explicativo refinado.</div>
+  </div>
+- Exemplo de Métrica de Dados (Número Gigante):
+  <div class="flex flex-col items-center justify-center my-4">
+    <div class="text-6xl font-extrabold title-font text-transparent bg-clip-text bg-gradient-to-r from-${pColor} to-${sColor}">+147%</div>
+    <div class="text-xs text-white/60 uppercase tracking-widest mt-1">Aumento de Engajamento</div>
+  </div>
+- Exemplo de Grid Lado a Lado (Comparação):
+  <div class="grid grid-cols-2 gap-3 my-2">
+    <div class="p-3 rounded-xl border border-red-500/20 bg-red-500/5">
+      <div class="font-bold text-red-400 text-xs uppercase mb-1">Errado</div>
+      <div class="text-[11px] text-white/70">Texto descrevendo o erro comum.</div>
+    </div>
+    <div class="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+      <div class="font-bold text-emerald-400 text-xs uppercase mb-1">Certo</div>
+      <div class="text-[11px] text-white/70">A solução elegante recomendada.</div>
+    </div>
+  </div>
+
+Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os estilos inline limpos e adequados para cores em contraste com fundos escuros.
+`
+
+    // Call Gemini API with fallback
+    let response
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          temperature: 0.7,
+        }
+      })
+    } catch (apiError: any) {
+      console.warn('Gemini 2.5 Flash failed, attempting fallback to Gemini 3.1 Flash Lite:', apiError)
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: prompt,
+          config: {
+            temperature: 0.7,
+          }
+        })
+      } catch (fallbackError: any) {
+        console.error('Gemini 3.1 Flash Lite fallback also failed:', fallbackError)
+        throw fallbackError
+      }
+    }
+
+    let htmlContent = response.text || ''
+    
+    // Clean up potential markdown formatting from the response
+    if (htmlContent.includes('```html')) {
+      htmlContent = htmlContent.split('```html')[1].split('```')[0].trim()
+    } else if (htmlContent.includes('```')) {
+      htmlContent = htmlContent.split('```')[1].split('```')[0].trim()
+    }
+
+    const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${htmlContent}`
+
+    // Decrement user's credits by 1
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({ credits: Math.max(0, profile.credits - 1) })
+      .eq('id', user.id)
+
+    if (updateError) {
+      console.error('Error decrementing credits:', updateError)
+    }
+
+    // Log the transaction
+    const { error: txError } = await supabaseAdmin
+      .from('credit_transactions')
+      .insert({
+        user_id: user.id,
+        amount: -1,
+        reason: 'carousel_generation'
+      })
+
+    if (txError) {
+      console.error('Error logging credit transaction:', txError)
+    }
+
+    // Save the carousel to public.carousels
+    const { data: carousel, error: carouselInsertError } = await supabase
+      .from('carousels')
+      .insert({
+        user_id: user.id,
+        title: topic,
+        topic: topic,
+        format: format,
+        slide_count: slideCount,
+        html_content: finalHtml,
+        status: 'ready',
+        credits_used: 1
+      })
+      .select('id')
+      .single()
+
+    if (carouselInsertError) {
+      console.error('Error saving carousel to database:', carouselInsertError)
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      html: finalHtml,
+      carouselId: carousel?.id || null
+    })
+
+  } catch (error: any) {
+    console.error('Error generating carousel:', error)
+    return NextResponse.json(
+      { error: 'Erro ao gerar carrossel', details: error.message },
+      { status: 500 }
+    )
+  }
+}
