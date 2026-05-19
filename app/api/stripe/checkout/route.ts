@@ -92,7 +92,16 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error creating subscription checkout:', error)
-    const detailedMessage = `${error.message || 'Erro ao criar sessão de pagamento'} (Name: ${error.name || 'N/A'}, Code: ${error.code || 'N/A'}, Type: ${error.type || 'N/A'}, Stack: ${error.stack ? error.stack.substring(0, 200) : 'No stack'})`
+    
+    let detailStr = ''
+    if (error.detail) {
+      detailStr = ` | Detail: ${typeof error.detail === 'object' ? JSON.stringify(error.detail) : error.detail}`
+    }
+    if (error.cause) {
+      detailStr += ` | Cause: ${typeof error.cause === 'object' ? JSON.stringify(error.cause) : error.cause}`
+    }
+    
+    const detailedMessage = `${error.message || 'Erro ao criar sessão de pagamento'} (Name: ${error.name || 'N/A'}, Code: ${error.code || 'N/A'}, Type: ${error.type || 'N/A'}${detailStr}, Stack: ${error.stack ? error.stack.substring(0, 150) : 'No stack'})`
     return NextResponse.json({ error: detailedMessage }, { status: 500 })
   }
 }
