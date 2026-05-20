@@ -306,7 +306,9 @@ export default function NewCarouselPage() {
     <div className="max-w-6xl mx-auto min-h-[calc(100vh-8rem)] h-auto lg:h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500">
       
       {/* Editor Panel */}
-      <div className="w-full lg:w-1/3 flex flex-col gap-6 h-auto lg:h-full overflow-visible lg:overflow-y-auto pr-2 pb-8 relative">
+      <div className={`w-full lg:w-1/3 flex flex-col gap-6 h-auto lg:h-full pr-2 pb-8 relative ${
+        profile && profile.credits <= 0 && !profileLoading ? 'overflow-hidden' : 'overflow-visible lg:overflow-y-auto'
+      }`}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-1">
