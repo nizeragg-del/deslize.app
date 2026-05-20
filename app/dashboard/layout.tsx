@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Plus, History, Settings, Sparkles, Menu, X, LogOut, Mail, KeyRound } from 'lucide-react'
+import { LayoutDashboard, Plus, History, Settings, Sparkles, Menu, X, LogOut, Mail, KeyRound, User } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 export default function DashboardLayout({
@@ -16,6 +16,8 @@ export default function DashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [credits, setCredits] = useState<number | null>(null)
   const [plan, setPlan] = useState<string>('free')
+  const [name, setName] = useState<string>('Criador')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function DashboardLayout({
       if (user) {
         let { data: profile, error } = await supabase
           .from('profiles')
-          .select('credits, plan')
+          .select('credits, plan, name, avatar_url')
           .eq('id', user.id)
           .single()
         
@@ -35,11 +37,11 @@ export default function DashboardLayout({
               id: user.id,
               email: user.email,
               name: user.user_metadata?.name || user.email?.split('@')[0] || 'Criador',
-              avatar_url: user.user_metadata?.avatar_url,
+              avatar_url: user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=Aurora',
               plan: 'free',
               credits: 1
             })
-            .select('credits, plan')
+            .select('credits, plan, name, avatar_url')
             .single()
           
           if (newProfile) {
@@ -50,6 +52,8 @@ export default function DashboardLayout({
         if (profile) {
           setCredits(profile.credits)
           setPlan(profile.plan)
+          setName(profile.name || user.email?.split('@')[0] || 'Criador')
+          setAvatarUrl(profile.avatar_url || '')
         }
       }
     }
@@ -127,31 +131,31 @@ export default function DashboardLayout({
 
       {/* User Area */}
       <div className="pt-4 border-t border-[var(--border-dark)] space-y-1">
+        {/* Interactive User profile badge in sidebar */}
         <Link 
-          href="/dashboard/alterar-email"
-          className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors ${
-            pathname === '/dashboard/alterar-email'
-              ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-semibold'
-              : 'text-[var(--text-muted)] hover:text-white hover:bg-[#ffffff0a]'
+          href="/dashboard/perfil"
+          className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-all border mb-2 group ${
+            pathname === '/dashboard/perfil'
+              ? 'bg-[var(--brand-primary)]/10 border-[var(--brand-primary)]/20 text-[var(--brand-primary)] font-semibold'
+              : 'border-transparent text-[var(--text-muted)] hover:text-white hover:bg-[#ffffff0a]'
           }`}
         >
-          <Mail className="w-5 h-5" />
-          Alterar E-mail
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-[var(--border-dark)] bg-[#14151f] flex items-center justify-center shrink-0">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-4 h-4 text-[var(--text-muted)]" />
+            )}
+          </div>
+          <div className="text-left flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate group-hover:text-white transition-colors">{name}</p>
+            <p className="text-[10px] text-[var(--text-muted2)] truncate">Meu Perfil</p>
+          </div>
         </Link>
-        <Link 
-          href="/dashboard/alterar-senha"
-          className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors ${
-            pathname === '/dashboard/alterar-senha'
-              ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-semibold'
-              : 'text-[var(--text-muted)] hover:text-white hover:bg-[#ffffff0a]'
-          }`}
-        >
-          <KeyRound className="w-5 h-5" />
-          Alterar Senha
-        </Link>
+
         <button 
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors rounded-lg hover:bg-[#ffffff0a] mt-1"
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[var(--text-muted)] hover:text-white transition-colors rounded-lg hover:bg-[#ffffff0a] mt-1"
         >
           <LogOut className="w-5 h-5" />
           Sair
