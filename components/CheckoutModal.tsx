@@ -17,7 +17,7 @@ const stripePromise = loadStripe(
 interface CheckoutModalProps {
   isOpen: boolean
   onClose: () => void
-  planKey: 'starter' | 'pro' | 'agency'
+  planKey: 'starter' | 'pro' | 'agency' | 'starter_annual' | 'pro_annual' | 'agency_annual'
   planName: string
   price: string
   credits: number

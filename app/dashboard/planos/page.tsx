@@ -145,17 +145,25 @@ function PlansContent() {
             
             <div className="mb-8">
               <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-[family-name:var(--font-bricolage)] font-extrabold text-white">
                   R$ {billingCycle === 'anual' ? plan.priceAnnual : plan.priceMonthly}
                 </span>
                 <span className="text-[var(--text-muted)] text-sm">/mês</span>
-              </div>
-              <div className="h-4 mt-1">
                 {billingCycle === 'anual' && (
-                  <span className="text-[10px] text-[var(--text-muted2)]">
-                    Cobrado R$ {parseInt(plan.priceAnnual) * 12} anualmente
-                  </span>
+                  <span className="text-sm text-[var(--text-muted)] line-through opacity-50">R$ {plan.priceMonthly}</span>
+                )}
+              </div>
+              <div className="min-h-[20px] mt-1.5 flex flex-wrap items-center gap-2">
+                {billingCycle === 'anual' && (
+                  <>
+                    <span className="text-[10px] text-[var(--text-muted2)]">
+                      Cobrado R$ {parseInt(plan.priceAnnual) * 12} anualmente
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      💰 Economize R$ {(parseInt(plan.priceMonthly) - parseInt(plan.priceAnnual)) * 12}/ano
+                    </span>
+                  </>
                 )}
               </div>
               <p className="text-[var(--accent)] text-sm mt-2 font-medium">{plan.credits} créditos mensais</p>
@@ -224,7 +232,11 @@ function PlansContent() {
         <CheckoutModal
           isOpen={!!selectedPlan}
           onClose={() => setSelectedPlan(null)}
-          planKey={billingCycle === 'anual' ? `${selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()}_annual` as any : (selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()) as any}
+          planKey={(() => {
+            const base = selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()
+            if (billingCycle === 'anual') return `${base}_annual` as 'starter_annual' | 'pro_annual' | 'agency_annual'
+            return base as 'starter' | 'pro' | 'agency'
+          })()}
           planName={`${selectedPlan.name} (${billingCycle === 'anual' ? 'Anual' : 'Mensal'})`}
           price={billingCycle === 'anual' ? (parseInt(selectedPlan.priceAnnual)*12).toString() : selectedPlan.priceMonthly}
           credits={selectedPlan.credits}
