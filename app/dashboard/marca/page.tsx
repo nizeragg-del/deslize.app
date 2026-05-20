@@ -4,6 +4,21 @@ import { useState, useEffect, useRef } from 'react'
 import { Sparkles, Palette, Type, MessageSquare, Upload, Save, Plus, Trash2, Check, Lock, RefreshCw, Crown } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
+const PRESET_PALETTES = [
+  { name: 'Neon Cyber', primary: '#06B6D4', secondary: '#F43F5E', bg: '#0A0A0F' },
+  { name: 'Royal Gold', primary: '#EAB308', secondary: '#F59E0B', bg: '#171717' },
+  { name: 'Ultra Violet', primary: '#8B5CF6', secondary: '#C084FC', bg: '#0F0B1A' },
+  { name: 'Emerald Tech', primary: '#10B981', secondary: '#34D399', bg: '#061C14' },
+  { name: 'Monochrome', primary: '#FFFFFF', secondary: '#9CA3AF', bg: '#000000' },
+  { name: 'Sunset', primary: '#F97316', secondary: '#FB923C', bg: '#1A0E08' },
+  { name: 'Ocean Depth', primary: '#0EA5E9', secondary: '#38BDF8', bg: '#081426' },
+  { name: 'Rose Gold', primary: '#FDA4AF', secondary: '#FECDD3', bg: '#1C1214' },
+  { name: 'Mint Clean', primary: '#A7F3D0', secondary: '#6EE7B7', bg: '#0D1A16' },
+  { name: 'Deep Purple', primary: '#4C1D95', secondary: '#7C3AED', bg: '#0D0817' },
+  { name: 'Cherry Red', primary: '#E11D48', secondary: '#F43F5E', bg: '#1A0B0E' },
+  { name: 'Slate Minimal', primary: '#94A3B8', secondary: '#CBD5E1', bg: '#0F172A' },
+]
+
 export default function BrandKitPage() {
   const supabase = createClient()
   
@@ -31,6 +46,11 @@ export default function BrandKitPage() {
 
   // Load all user profiles and brands
   useEffect(() => {
+    const link = document.createElement('link')
+    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&family=Montserrat:wght@700;800&family=DM+Sans:wght@400;500&family=Roboto:wght@400;500&family=Lora:wght@400;500&display=swap'
+    link.rel = 'stylesheet'
+    document.head.appendChild(link)
+
     async function loadData() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -95,6 +115,10 @@ export default function BrandKitPage() {
       }
     }
     loadData()
+
+    return () => {
+      document.head.removeChild(link)
+    }
   }, [])
 
   // Handle switching selected brand
@@ -558,6 +582,28 @@ export default function BrandKitPage() {
                 </h2>
               </div>
 
+              <div className="mb-8">
+                <label className="block text-sm font-medium mb-3 text-[var(--text-muted)]">Paletas Prontas (Clique para aplicar)</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {PRESET_PALETTES.map(palette => (
+                    <div
+                      key={palette.name}
+                      onClick={() => setBrandForm({ ...brandForm, primaryColor: palette.primary, secondaryColor: palette.secondary, bgColor: palette.bg })}
+                      className="p-2 rounded-xl cursor-pointer border border-[var(--border-dark)] hover:border-white/20 transition-all bg-[#00000033]"
+                    >
+                      <div className="flex gap-1 mb-2 h-6">
+                        <div className="flex-1 rounded-l-md border border-white/5" style={{ backgroundColor: palette.bg }}></div>
+                        <div className="w-4 h-full border border-white/5" style={{ backgroundColor: palette.primary }}></div>
+                        <div className="w-4 h-full rounded-r-md border border-white/5" style={{ backgroundColor: palette.secondary }}></div>
+                      </div>
+                      <div className="text-[9px] text-center text-[var(--text-muted2)] truncate font-semibold">
+                        {palette.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Cor Primária</label>
@@ -653,6 +699,25 @@ export default function BrandKitPage() {
                     <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
                     <option value="Lora">Lora</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="mt-8 p-6 rounded-xl border border-[var(--border-dark)] bg-black/30">
+                <div className="text-xs text-[var(--text-muted2)] mb-4 font-semibold uppercase tracking-wider flex items-center justify-between">
+                  Preview Dinâmico
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: brandForm.primaryColor }}></div>
+                    <div className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: brandForm.secondaryColor }}></div>
+                  </div>
+                </div>
+                <div className="p-6 rounded-xl border border-white/5 shadow-2xl" style={{ backgroundColor: brandForm.bgColor }}>
+                  <h3 style={{ fontFamily: brandForm.fontDisplay, color: brandForm.primaryColor }} className="text-3xl font-bold mb-3">
+                    A Arte de Criar Conteúdo
+                  </h3>
+                  <p style={{ fontFamily: brandForm.fontBody }} className="text-[var(--text-muted)] text-sm leading-relaxed">
+                    Descubra os segredos que os maiores criadores usam para viralizar todos os dias. 
+                    Com a <span style={{ color: brandForm.secondaryColor, fontWeight: 'bold' }}>estratégia certa</span>, seu próximo post será um sucesso garantido.
+                  </p>
                 </div>
               </div>
             </section>

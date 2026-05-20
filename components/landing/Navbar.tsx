@@ -1,18 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <>
       <motion.nav 
         initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0,
+          backgroundColor: isScrolled ? "rgba(7, 7, 13, 0.85)" : "rgba(7, 7, 13, 0.3)",
+          borderBottomColor: isScrolled ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
+          boxShadow: isScrolled ? "0 4px 30px rgba(0, 0, 0, 0.3)" : "none"
+        }}
+        transition={{ duration: 0.3 }}
+        style={{
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          position: "fixed",
+          top: 0, left: 0, right: 0,
+          zIndex: 100,
+          padding: "0 40px",
+          height: "64px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottomWidth: "1px",
+          borderBottomStyle: "solid",
+          transition: "padding 0.3s ease"
+        }}
       >
         <Link href="/" className="logo">
           <div className="logo-icon">

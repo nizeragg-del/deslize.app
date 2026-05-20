@@ -26,6 +26,13 @@ export default function NewCarouselPage() {
   const [profile, setProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [isUpsellModalOpen, setIsUpsellModalOpen] = useState(false)
+
+  // New UI/UX states (Melhorias 4, 5, 12, 13)
+  const [loadingStage, setLoadingStage] = useState(0)
+  const [slideHeadings, setSlideHeadings] = useState<string[]>([])
+  const [hoveredDot, setHoveredDot] = useState<number | null>(null)
+  const [isGridModalOpen, setIsGridModalOpen] = useState(false)
+  const [copiedCaption, setCopiedCaption] = useState(false)
   
   const startXRef = useRef(0)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -93,6 +100,66 @@ export default function NewCarouselPage() {
     }
     loadInitialData()
   }, [])
+
+  // 1. Loading Stages Timer (Melhoria 5)
+  useEffect(() => {
+    let interval: any
+    if (loading) {
+      setLoadingStage(0)
+      interval = setInterval(() => {
+        setLoadingStage(prev => (prev + 1) % 4)
+      }, 3000)
+    } else {
+      setLoadingStage(0)
+    }
+    return () => clearInterval(interval)
+  }, [loading])
+
+  // 2. Parse slide headings from dynamic HTML content (Melhoria 4)
+  useEffect(() => {
+    if (htmlContent) {
+      try {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(htmlContent, 'text/html')
+        const headings = Array.from(doc.querySelectorAll('.slide-h')).map(el => el.textContent || '')
+        setSlideHeadings(headings)
+      } catch (err) {
+        console.error('Error parsing headings:', err)
+      }
+    } else {
+      setSlideHeadings([])
+    }
+  }, [htmlContent])
+
+  // 3. Helper to extract cover slide HTML (Melhoria 12)
+  const getCoverSlideHtml = () => {
+    if (!htmlContent) return ''
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(htmlContent, 'text/html')
+      const firstSlide = doc.querySelector('.ig-slide')
+      return firstSlide ? firstSlide.outerHTML : ''
+    } catch (err) {
+      console.error(err)
+      return ''
+    }
+  }
+
+  // 4. Helper to copy post caption/legend (Melhoria 13)
+  const handleCopyCaption = () => {
+    const text = `🔥 Quer aprender mais sobre "${topic || 'este tema'}"?
+     
+Aqui está o resumo do que você precisa saber:
+${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
+
+💡 Salve esse post para não esquecer e siga @suamarca para mais dicas diárias de alto impacto!
+
+#instagrammarketing #conteudodigital #branding #sucesso #copywriting`
+    
+    navigator.clipboard.writeText(text)
+    setCopiedCaption(true)
+    setTimeout(() => setCopiedCaption(false), 3000)
+  }
 
   const handleStart = (clientX: number) => {
     if (!htmlContent) return
@@ -469,27 +536,47 @@ export default function NewCarouselPage() {
 
         {/* Action Panel for adjustments (only visible when generated) */}
         {htmlContent && (
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 mt-4">
-            <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[var(--accent)]" /> Ajuste por IA
-            </h3>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Ex: Deixa o slide 2 mais urgente"
-                className="flex-1 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-3 py-2 text-sm text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAdjust(e.currentTarget.value)
-                }}
-              />
-              <button 
-                onClick={() => handleAdjust('Ajuste via botão')}
-                className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/80 text-white p-2 rounded-xl transition-colors"
+          <>
+            <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 mt-4">
+              <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--accent)]" /> Ajuste por IA
+              </h3>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Ex: Deixa o slide 2 mais urgente"
+                  className="flex-1 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-3 py-2 text-sm text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAdjust(e.currentTarget.value)
+                  }}
+                />
+                <button 
+                  onClick={() => handleAdjust('Ajuste via botão')}
+                  className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/80 text-white p-2 rounded-xl transition-colors"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-5 mt-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand-primary)]/10 rounded-full blur-3xl pointer-events-none"></div>
+              <h3 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                <Type className="w-4 h-4 text-[var(--brand-primary)]" /> Legenda Sugerida
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mb-4 line-clamp-2">
+                🔥 Quer aprender mais sobre "{topic || 'este tema'}"?
+                Aqui está o resumo do que você precisa saber...
+              </p>
+              <button
+                onClick={handleCopyCaption}
+                className="w-full flex items-center justify-center gap-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl transition-all border border-white/5"
               >
-                <ArrowRight className="w-5 h-5" />
+                {copiedCaption ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Type className="w-4 h-4" />}
+                {copiedCaption ? 'Legenda Copiada!' : 'Copiar Legenda'}
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -501,14 +588,24 @@ export default function NewCarouselPage() {
             {htmlContent ? 'Preview interativo' : 'Aguardando configuração'}
           </div>
           {htmlContent && (
-            <button 
-              onClick={handleExport}
-              disabled={loading}
-              className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50"
-            >
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Exportar PNGs
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsGridModalOpen(true)}
+                disabled={loading}
+                className="flex items-center gap-2 text-sm bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50 border border-white/10"
+              >
+                <Layout className="w-4 h-4" />
+                Ver no Grid
+              </button>
+              <button 
+                onClick={handleExport}
+                disabled={loading}
+                className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Exportar PNGs
+              </button>
+            </div>
           )}
         </div>
 
@@ -527,14 +624,54 @@ export default function NewCarouselPage() {
           )}
 
           {loading && (
-            <div className="text-center relative z-10 flex flex-col items-center">
+            <div className="text-center relative z-10 flex flex-col items-center max-w-sm p-6 w-full animate-in fade-in duration-300">
+              {/* Spinning and pulsing loader */}
               <div className="w-16 h-16 relative mb-6">
                 <div className="absolute inset-0 border-4 border-[var(--brand-primary)]/30 rounded-full"></div>
                 <div className="absolute inset-0 border-4 border-[var(--accent)] rounded-full border-t-transparent animate-spin"></div>
                 <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-[var(--brand-primary)] animate-pulse" />
               </div>
+              
               <h3 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">A IA está criando...</h3>
-              <p className="text-[var(--text-muted)] text-sm animate-pulse">Isso pode levar até 30 segundos.</p>
+              <p className="text-[var(--text-muted)] text-xs mb-6 animate-pulse text-center">Aguarde, estruturando sua publicação viral.</p>
+              
+              {/* Dynamic steps indicating exact pipeline stages (Melhoria 5) */}
+              <div className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-left space-y-3">
+                {[
+                  'Escrevendo copy magnética com engenharia de prompts...',
+                  'Harmonizando paleta de cores do Brand Kit...',
+                  'Diagramando tipografia e ajustando contraste...',
+                  'Finalizando e compilando slides em alta definição...'
+                ].map((stepMsg, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="shrink-0">
+                      {loadingStage > idx ? (
+                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                        </div>
+                      ) : loadingStage === idx ? (
+                        <div className="w-4 h-4 rounded-full bg-[var(--accent)]/20 border border-[var(--accent)]/30 flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-ping"></div>
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10"></div>
+                      )}
+                    </div>
+                    <span className={`text-[10px] ${loadingStage === idx ? 'text-white font-bold' : loadingStage > idx ? 'text-white/40' : 'text-white/20'}`}>
+                      {stepMsg}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Skeleton screen visual placeholders */}
+              <div className="w-full mt-6 h-12 bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded bg-white/5 animate-pulse shrink-0"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-2 bg-white/10 rounded w-3/4 animate-pulse"></div>
+                  <div className="h-1.5 bg-white/5 rounded w-1/2 animate-pulse"></div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -643,15 +780,23 @@ export default function NewCarouselPage() {
                 </div>
 
                 {/* IG Dots Navigation */}
-                <div className="flex justify-center gap-1.5 pb-4 bg-[#0d0d12]">
+                <div className="flex justify-center gap-1.5 pb-4 bg-[#0d0d12] relative">
                   {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
                     <div 
                       key={i} 
                       onClick={() => setCurrentSlide(i)}
-                      className={`w-[6px] h-[6px] rounded-full transition-all cursor-pointer ${
+                      onMouseEnter={() => setHoveredDot(i)}
+                      onMouseLeave={() => setHoveredDot(null)}
+                      className={`w-[6px] h-[6px] rounded-full transition-all cursor-pointer relative ${
                         currentSlide === i ? 'bg-[#7c3aed]' : 'bg-white/20 hover:bg-white/40'
                       }`}
-                    ></div>
+                    >
+                      {hoveredDot === i && slideHeadings[i] && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 border border-white/10 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-1">
+                          {slideHeadings[i].length > 20 ? slideHeadings[i].substring(0, 20) + '...' : slideHeadings[i]}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -717,6 +862,35 @@ export default function NewCarouselPage() {
                 Voltar para o editor
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feed Grid Modal */}
+      {isGridModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4 animate-in fade-in duration-300">
+          <div className="bg-[#07070D] border border-white/10 rounded-3xl p-6 max-w-sm w-full relative overflow-hidden shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-300">
+            <div className="w-full flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Layout className="w-5 h-5 text-[var(--brand-primary)]" /> Preview no Feed
+              </h3>
+              <button onClick={() => setIsGridModalOpen(false)} className="text-[var(--text-muted)] hover:text-white transition-colors">
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-1 w-full bg-black/50 p-1 border border-white/5 rounded-xl">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="aspect-square bg-white/5 rounded-md flex items-center justify-center">
+                  <div className="w-6 h-6 rounded bg-white/10"></div>
+                </div>
+              ))}
+              <div className="aspect-square rounded-md overflow-hidden relative border border-[var(--brand-primary)]/50 shadow-[0_0_15px_rgba(124,58,237,0.3)] bg-[var(--bg-dark)]">
+                <div className="w-[300%] h-[300%] origin-top-left scale-[0.333]" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getCoverSlideHtml()) }}></div>
+              </div>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-4 text-center">
+              Veja como seu carrossel vai se destacar no perfil.
+            </p>
           </div>
         </div>
       )}

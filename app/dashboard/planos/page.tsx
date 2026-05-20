@@ -8,7 +8,8 @@ import CheckoutModal from '@/components/CheckoutModal'
 const plans = [
   {
     name: 'Starter',
-    price: '29',
+    priceMonthly: '29',
+    priceAnnual: '24',
     credits: 30,
     features: [
       '30 carrosséis por mês',
@@ -21,7 +22,8 @@ const plans = [
   },
   {
     name: 'Pro',
-    price: '59',
+    priceMonthly: '59',
+    priceAnnual: '49',
     credits: 80,
     features: [
       '80 carrosséis por mês',
@@ -34,7 +36,8 @@ const plans = [
   },
   {
     name: 'Agência',
-    price: '119',
+    priceMonthly: '119',
+    priceAnnual: '99',
     credits: 200,
     features: [
       '200 carrosséis por mês',
@@ -49,6 +52,7 @@ const plans = [
 
 function PlansContent() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
+  const [billingCycle, setBillingCycle] = useState<'mensal' | 'anual'>('anual')
   const searchParams = useSearchParams()
   const planParam = searchParams?.get('plan')
 
@@ -96,6 +100,31 @@ function PlansContent() {
         </button>
       </div>
 
+      <div className="flex justify-center items-center mb-10">
+        <div className="bg-[#00000033] p-1 rounded-xl border border-[var(--border-dark)] inline-flex items-center">
+          <button
+            onClick={() => setBillingCycle('mensal')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              billingCycle === 'mensal'
+                ? 'bg-[var(--surface-dark)] text-white shadow-md border border-[var(--border-dark)]'
+                : 'text-[var(--text-muted)] hover:text-white'
+            }`}
+          >
+            Mensal
+          </button>
+          <button
+            onClick={() => setBillingCycle('anual')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+              billingCycle === 'anual'
+                ? 'bg-[var(--surface-dark)] text-white shadow-md border border-[var(--border-dark)]'
+                : 'text-[var(--text-muted)] hover:text-white'
+            }`}
+          >
+            Anual <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Desconto OFF</span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full">
         {plans.map(plan => (
           <div 
@@ -117,8 +146,17 @@ function PlansContent() {
             <div className="mb-8">
               <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-[family-name:var(--font-bricolage)] font-extrabold text-white">R$ {plan.price}</span>
+                <span className="text-4xl font-[family-name:var(--font-bricolage)] font-extrabold text-white">
+                  R$ {billingCycle === 'anual' ? plan.priceAnnual : plan.priceMonthly}
+                </span>
                 <span className="text-[var(--text-muted)] text-sm">/mês</span>
+              </div>
+              <div className="h-4 mt-1">
+                {billingCycle === 'anual' && (
+                  <span className="text-[10px] text-[var(--text-muted2)]">
+                    Cobrado R$ {parseInt(plan.priceAnnual) * 12} anualmente
+                  </span>
+                )}
               </div>
               <p className="text-[var(--accent)] text-sm mt-2 font-medium">{plan.credits} créditos mensais</p>
             </div>
@@ -148,13 +186,47 @@ function PlansContent() {
         ))}
       </div>
 
+      {/* Gold Guarantee Seal & FAQ */}
+      <div className="max-w-3xl mx-auto mt-20 text-center">
+        <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center p-0.5 mb-6 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
+          <div className="w-full h-full bg-[#050508] rounded-full flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-yellow-500 fill-yellow-500 animate-pulse" />
+          </div>
+        </div>
+        <h3 className="text-2xl font-bold text-white mb-4">Garantia Incondicional de 7 Dias</h3>
+        <p className="text-[var(--text-muted)] text-sm mb-12">
+          Se você não gostar dos carrosséis gerados pela IA ou achar que a ferramenta não economizou horas do seu dia, devolvemos 100% do seu dinheiro. Sem perguntas.
+        </p>
+
+        <div className="text-left space-y-4">
+          <details className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 group cursor-pointer">
+            <summary className="font-bold text-white list-none flex justify-between items-center">
+              Posso cancelar a qualquer momento?
+              <span className="transition group-open:rotate-180">▼</span>
+            </summary>
+            <p className="text-[var(--text-muted)] text-sm mt-4 leading-relaxed">
+              Sim! Nossa assinatura não possui fidelidade. Você pode cancelar a renovação automática a qualquer momento com apenas 2 cliques no seu painel.
+            </p>
+          </details>
+          <details className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 group cursor-pointer">
+            <summary className="font-bold text-white list-none flex justify-between items-center">
+              Como funcionam os créditos?
+              <span className="transition group-open:rotate-180">▼</span>
+            </summary>
+            <p className="text-[var(--text-muted)] text-sm mt-4 leading-relaxed">
+              Cada carrossel gerado consome 1 crédito. Se você não usar todos os créditos no mês, eles expiram e o ciclo se renova. Planos maiores possuem limite de créditos muito superior.
+            </p>
+          </details>
+        </div>
+      </div>
+
       {selectedPlan && (
         <CheckoutModal
           isOpen={!!selectedPlan}
           onClose={() => setSelectedPlan(null)}
-          planKey={selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()}
-          planName={selectedPlan.name}
-          price={selectedPlan.price}
+          planKey={billingCycle === 'anual' ? `${selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()}_annual` as any : (selectedPlan.name.toLowerCase() === 'agência' ? 'agency' : selectedPlan.name.toLowerCase()) as any}
+          planName={`${selectedPlan.name} (${billingCycle === 'anual' ? 'Anual' : 'Mensal'})`}
+          price={billingCycle === 'anual' ? (parseInt(selectedPlan.priceAnnual)*12).toString() : selectedPlan.priceMonthly}
           credits={selectedPlan.credits}
         />
       )}

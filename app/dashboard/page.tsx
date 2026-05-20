@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Image as ImageIcon, Sparkles, Clock, Calendar, Eye, Download, Trash2, X, RefreshCw } from 'lucide-react'
+import { Plus, Image as ImageIcon, Sparkles, Clock, Calendar, Eye, Download, Trash2, X, RefreshCw, Check, Copy, Share2, HelpCircle, Trophy, BookOpen, ChevronRight, Award, Play } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
@@ -16,6 +16,15 @@ export default function DashboardHome() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [exportLoading, setExportLoading] = useState(false)
   const supabase = createClient()
+
+  // Onboarding & Gamification States
+  const [brandCount, setBrandCount] = useState(0)
+  const [userId, setUserId] = useState('')
+  const [userName, setUserName] = useState('')
+  const [onboardingClaimed, setOnboardingClaimed] = useState(false)
+  const [claimingOnboarding, setClaimingOnboarding] = useState(false)
+  const [copiedReferral, setCopiedReferral] = useState(false)
+  const [activeHelpModal, setActiveHelpModal] = useState<string | null>(null)
 
   // Drag state for interactive slider preview inside modal
   const [isDragging, setIsDragging] = useState(false)
@@ -69,6 +78,18 @@ export default function DashboardHome() {
         setCarousels(carouselsData.slice(0, 6)) // Show up to 6 recent carousels
         setTotalCount(carouselsData.length)
       }
+
+      // 3. Fetch brands count
+      const { count: bCount } = await supabase
+        .from('brands')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      setBrandCount(bCount || 0)
+      setUserId(user.id)
+      setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Criador')
+      setOnboardingClaimed(localStorage.getItem(`onboarding_claimed_${user.id}`) === 'true')
+
       setLoading(false)
     }
 
@@ -76,6 +97,40 @@ export default function DashboardHome() {
   }, [])
 
   const maxCredits = profile?.plan === 'free' ? 1 : profile?.plan === 'starter' ? 30 : profile?.plan === 'pro' ? 80 : 200
+
+  const claimOnboardingBonus = async () => {
+    if (claimingOnboarding || onboardingClaimed) return
+    setClaimingOnboarding(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      
+      const newCredits = (profile?.credits || 0) + 1
+      const { error } = await supabase
+        .from('profiles')
+        .update({ credits: newCredits })
+        .eq('id', user.id)
+
+      if (error) throw error
+      
+      setProfile(prev => prev ? { ...prev, credits: newCredits } : null)
+      setOnboardingClaimed(true)
+      localStorage.setItem(`onboarding_claimed_${user.id}`, 'true')
+      alert('Parabéns! 1 Crédito Bônus foi adicionado à sua conta!')
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao resgatar bônus. Tente novamente.')
+    } finally {
+      setClaimingOnboarding(false)
+    }
+  }
+
+  const copyReferralLink = () => {
+    const link = `https://deslize.app/join?ref=${userId.substring(0, 8)}`
+    navigator.clipboard.writeText(link)
+    setCopiedReferral(true)
+    setTimeout(() => setCopiedReferral(false), 3000)
+  }
 
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -247,25 +302,173 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white">Seus Carrosséis</h2>
-        </div>
+      {/* Main Grid Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Column: Onboarding & Recent Activity (2/3 width) */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* Gamified Onboarding Progress Bar (Melhoria 14) */}
+          <div className="bg-[var(--surface-dark)]/85 backdrop-blur-md border border-[var(--border-dark)] rounded-3xl p-6 relative overflow-hidden">
+            {/* Soft glow background */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--brand-primary)]/5 rounded-full blur-[85px] pointer-events-none"></div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <h2 className="text-lg font-[family-name:var(--font-bricolage)] font-bold text-white">Sua Jornada de Onboarding</h2>
+                </div>
+                <p className="text-xs text-[var(--text-muted)]">Complete as etapas rápidas abaixo para começar a faturar.</p>
+              </div>
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-2xl shrink-0 self-start sm:self-auto">
+                <Award className="w-4 h-4 text-[var(--accent)]" />
+                {(() => {
+                  const onboardingSteps = [
+                    { id: 1, done: true },
+                    { id: 2, done: brandCount > 0 },
+                    { id: 3, done: totalCount > 0 },
+                  ];
+                  const completed = onboardingSteps.filter(s => s.done).length;
+                  const progress = Math.round((completed / onboardingSteps.length) * 100);
+                  return <span className="text-xs font-bold text-white">{progress}% concluído</span>;
+                })()}
+              </div>
+            </div>
 
-        {carousels.length === 0 ? (
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-12 text-center">
-            <ImageIcon className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-bold text-white mb-2">Nenhum carrossel ainda</h3>
-            <p className="text-[var(--text-muted)] mb-6 max-w-sm mx-auto">Você ainda não criou nenhum carrossel. Comece agora mesmo a gerar conteúdos incríveis!</p>
-            <Link href="/dashboard/novo" className="btn-primary inline-flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Criar meu primeiro carrossel
-            </Link>
+            {/* Progress track */}
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-6 border border-white/5">
+              {(() => {
+                const onboardingSteps = [
+                  { id: 1, done: true },
+                  { id: 2, done: brandCount > 0 },
+                  { id: 3, done: totalCount > 0 },
+                ];
+                const completed = onboardingSteps.filter(s => s.done).length;
+                const progress = Math.round((completed / onboardingSteps.length) * 100);
+                return (
+                  <div 
+                    className="h-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--accent)] rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(124,58,237,0.4)]"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                );
+              })()}
+            </div>
+
+            {/* Checklist items */}
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { id: 1, name: 'Criar conta de criador', done: true, desc: 'Sua conta de criador está ativa e segura.', href: '#' },
+                { id: 2, name: 'Configurar primeiro Brand Kit', done: brandCount > 0, desc: 'Defina suas cores, fontes e logotipo da marca.', href: '/dashboard/marca' },
+                { id: 3, name: 'Gerar seu primeiro carrossel', done: totalCount > 0, desc: 'Escreva e formate seu primeiro post viral com IA.', href: '/dashboard/novo' },
+              ].map((step) => (
+                <div 
+                  key={step.id}
+                  className={`flex items-start gap-4 p-3.5 rounded-2xl border transition-all duration-300 ${
+                    step.done 
+                      ? 'bg-emerald-500/5 border-emerald-500/10' 
+                      : 'bg-white/[0.01] border-white/5 hover:bg-white/[0.03] hover:border-white/10'
+                  }`}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {step.done ? (
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                        <Check className="w-3 h-3 stroke-[3px]" />
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-xs font-bold text-white/50 bg-white/5">
+                        {step.id}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`text-xs font-bold leading-tight ${step.done ? 'text-emerald-400 line-through opacity-85' : 'text-white'}`}>
+                      {step.name}
+                    </h4>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-relaxed">{step.desc}</p>
+                  </div>
+                  {!step.done && step.href !== '#' && (
+                    <Link 
+                      href={step.href} 
+                      className="text-[10px] font-bold text-[var(--accent)] hover:text-white flex items-center gap-0.5 shrink-0 self-center bg-white/5 hover:bg-[var(--brand-primary)]/20 border border-white/10 rounded-lg px-2.5 py-1.5 transition-all"
+                    >
+                      Configurar <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Celebrative banner */}
+            {brandCount > 0 && totalCount > 0 && (
+              <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-[var(--brand-primary)]/20 to-[var(--accent)]/20 border border-[var(--brand-primary)]/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <Trophy className="w-5 h-5 fill-current" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Onboarding Concluído! 🎉</h4>
+                    <p className="text-[10px] text-[var(--text-muted)]">Você completou todas as etapas obrigatórias.</p>
+                  </div>
+                </div>
+                {onboardingClaimed ? (
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-xl whitespace-nowrap">
+                    Bônus Resgatado ✓
+                  </span>
+                ) : (
+                  <button 
+                    onClick={claimOnboardingBonus}
+                    disabled={claimingOnboarding}
+                    className="btn-primary py-2 px-4 rounded-xl text-xs font-bold shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap"
+                  >
+                    {claimingOnboarding ? 'Resgatando...' : 'Resgatar Crédito Bônus'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {carousels.map((carousel) => (
+
+          {/* Recent Activity / Carousels */}
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white">Seus Carrosséis</h2>
+              {carousels.length > 0 && (
+                <Link 
+                  href="/dashboard/historico" 
+                  className="text-xs font-semibold text-[var(--accent)] hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  Ver todos <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+            </div>
+
+            {carousels.length === 0 ? (
+              /* Beautiful Illustrated empty state (Melhoria 10) */
+              <div className="bg-[var(--surface-dark)]/60 backdrop-blur-sm border border-[var(--border-dark)] rounded-3xl p-12 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--brand-primary)]/5 to-transparent pointer-events-none"></div>
+                
+                {/* Neon decorative circles */}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[var(--brand-primary)] to-[var(--accent)] p-[1px] mx-auto mb-6 shadow-[0_0_35px_rgba(124,58,237,0.25)] relative flex items-center justify-center animate-bounce duration-[1500ms]">
+                  <div className="w-full h-full rounded-full bg-[#07070d] flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-[var(--accent)]" />
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-bold text-white mb-2">Pronto para criar posts magnéticos?</h3>
+                <p className="text-xs text-[var(--text-muted)] mb-8 max-w-sm mx-auto leading-relaxed">
+                  Deixe a inteligência artificial formular copies de alta conversão e designs elegantes consistentes com sua identidade visual.
+                </p>
+
+                <Link 
+                  href="/dashboard/novo" 
+                  className="btn-primary inline-flex items-center gap-2 font-bold px-6 py-3 shadow-[0_0_20px_rgba(124,58,237,0.35)] hover:shadow-[0_0_25px_rgba(124,58,237,0.5)] transition-all scale-100 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Plus className="w-4 h-4" />
+                  Criar primeiro carrossel
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {carousels.map((carousel) => (
               <div 
                 key={carousel.id} 
                 onClick={() => {
@@ -352,6 +555,76 @@ export default function DashboardHome() {
           </div>
         )}
       </div>
+      
+      </div> {/* Close Left Column (lg:col-span-2) */}
+      
+      {/* Right Column: Refer & Earn + Help Center (1/3 width) (Melhorias 15, 10) */}
+      <div className="space-y-6 lg:sticky lg:top-24">
+        {/* Indique e Ganhe Card */}
+        <div className="bg-[var(--surface-dark)]/80 backdrop-blur-md border border-[var(--border-dark)] rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#06B6D4]/5 rounded-full blur-[45px] pointer-events-none"></div>
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-5 h-5 text-[#06B6D4]" />
+            <h3 className="font-[family-name:var(--font-bricolage)] font-bold text-white text-sm">Indique e Ganhe 🎁</h3>
+          </div>
+          <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mb-5">
+            Compartilhe o Deslize com amigos. Quando eles criarem uma conta, você ganha <span className="text-[#06B6D4] font-bold">+2 créditos</span> e eles ganham <span className="text-[#06B6D4] font-bold">+1 crédito</span> de boas-vindas!
+          </p>
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-white/50">Seu Link Exclusivo</label>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                readOnly 
+                value={`https://deslize.app/join?ref=${userId ? userId.substring(0, 8) : 'code'}`}
+                className="flex-1 bg-black/40 border border-[var(--border-dark)] rounded-xl px-3 py-2 text-[10px] text-white/70 font-mono focus:outline-none truncate"
+              />
+              <button
+                onClick={copyReferralLink}
+                className="p-2 bg-white/5 hover:bg-[#06B6D4]/20 border border-white/10 hover:border-[#06B6D4]/30 rounded-xl text-white transition-all shrink-0 flex items-center justify-center cursor-pointer"
+                title="Copiar link"
+              >
+                {copiedReferral ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-white/75" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Central de Ajuda Widget */}
+        <div className="bg-[var(--surface-dark)]/80 backdrop-blur-md border border-[var(--border-dark)] rounded-3xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <HelpCircle className="w-5 h-5 text-[var(--brand-primary)]" />
+            <h3 className="font-[family-name:var(--font-bricolage)] font-bold text-white text-sm">Central de Ajuda 💡</h3>
+          </div>
+          <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mb-5">
+            Aprenda a otimizar suas criações em menos de 1 minuto com os guias rápidos abaixo.
+          </p>
+          <div className="space-y-3">
+            {[
+              { key: 'brand', title: 'Configurar Marca em 1 min', desc: 'Como aplicar fontes e cores consistentes.' },
+              { key: 'ia', title: 'Domine a Escrita com IA', desc: 'Dicas de prompts para copies magnéticas.' },
+              { key: 'export', title: 'Exportação Perfeita', desc: 'Como baixar em alta resolução para postar.' }
+            ].map((tutorial) => (
+              <button
+                key={tutorial.key}
+                onClick={() => setActiveHelpModal(tutorial.key)}
+                className="w-full text-left p-3 rounded-2xl bg-black/20 hover:bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex items-center gap-3 group cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[var(--brand-primary)]/10 group-hover:bg-[var(--brand-primary)]/20 border border-[var(--brand-primary)]/20 flex items-center justify-center shrink-0">
+                  <Play className="w-3.5 h-3.5 text-[var(--accent)] fill-current" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-[11px] font-bold text-white group-hover:text-[var(--accent)] transition-colors leading-tight truncate">{tutorial.title}</h4>
+                  <p className="text-[9px] text-[var(--text-muted2)] truncate mt-0.5">{tutorial.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white transition-all shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      </div> {/* Close Main Grid (grid-cols-1 lg:grid-cols-3) */}
 
       {/* Slide-by-slide Preview Modal */}
       {selectedCarousel && (
@@ -521,6 +794,105 @@ export default function DashboardHome() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal overlays (Melhoria 10) */}
+      {activeHelpModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0b0b0e] border border-[var(--border-dark)] rounded-3xl w-full max-w-lg p-6 relative overflow-hidden">
+            <button 
+              onClick={() => setActiveHelpModal(null)}
+              className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-white rounded-full bg-white/5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {activeHelpModal === 'brand' && (
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/20 flex items-center justify-center mb-4">
+                  <BookOpen className="w-6 h-6 text-[var(--accent)]" />
+                </div>
+                <h3 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">Configurar Marca em 1 min 🎨</h3>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
+                  Ter uma identidade consistente é a chave para o reconhecimento de marca. Siga estes passos simples:
+                </p>
+                <ul className="space-y-3 text-xs text-white/80">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[var(--accent)] font-bold shrink-0 mt-0.5">1</span>
+                    <span>Acesse a página <strong>Identidade Visual</strong> no menu lateral.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[var(--accent)] font-bold shrink-0 mt-0.5">2</span>
+                    <span>Escolha um nome para sua marca e envie seu logotipo preferido.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[var(--accent)] font-bold shrink-0 mt-0.5">3</span>
+                    <span>Selecione cores complementares para o Fundo, Texto e Destaques (ou escolha uma de nossas paletas prontas de grife!).</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[var(--accent)] font-bold shrink-0 mt-0.5">4</span>
+                    <span>Escolha as famílias tipográficas do Google Fonts e salve o Brand Kit.</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {activeHelpModal === 'ia' && (
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/20 flex items-center justify-center mb-4">
+                  <Sparkles className="w-6 h-6 text-[#06B6D4]" />
+                </div>
+                <h3 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">Domine a Escrita com IA ✍️</h3>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
+                  Nossos algoritmos escrevem com base nas melhores estruturas de copywriting. Para obter o máximo desempenho:
+                </p>
+                <ul className="space-y-3 text-xs text-white/80">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[#06B6D4] font-bold shrink-0 mt-0.5">1</span>
+                    <span><strong>Seja Específico:</strong> Em vez de "dicas de marketing", use "3 estratégias de tráfego pago para e-commerce de moda".</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[#06B6D4] font-bold shrink-0 mt-0.5">2</span>
+                    <span><strong>Defina o Público:</strong> Indique no prompt quem deve ler (ex: "voltado para iniciantes", "focado em empresários").</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-[#06B6D4] font-bold shrink-0 mt-0.5">3</span>
+                    <span><strong>Use a Caixa de Ajuste:</strong> Se o primeiro resultado não for perfeito, use o chat inferior no criador para pedir alterações específicas (ex: "deixe o tom mais agressivo", "adicione uma chamada para ação no final").</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            {activeHelpModal === 'export' && (
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
+                  <Download className="w-6 h-6 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">Exportação Perfeita 📥</h3>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">
+                  Garantimos a máxima nitidez para suas publicações no Instagram:
+                </p>
+                <ul className="space-y-3 text-xs text-white/80">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-emerald-400 font-bold shrink-0 mt-0.5">1</span>
+                    <span><strong>Download Compactado:</strong> Ao exportar, geramos todas as telas individualmente em alta definição em formato PNG, compactadas em um arquivo ZIP.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-emerald-400 font-bold shrink-0 mt-0.5">2</span>
+                    <span><strong>Postagem sem Perda:</strong> Certifique-se de ativar a opção "Carregar em alta qualidade" nas configurações de mídia do seu aplicativo do Instagram para evitar compressão forçada da plataforma.</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <button
+              onClick={() => setActiveHelpModal(null)}
+              className="mt-6 w-full btn-primary py-2.5 rounded-xl text-xs font-bold transition-all animate-bounce duration-[2000ms]"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
