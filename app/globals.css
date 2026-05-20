@@ -53,3 +53,36 @@ body {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
 }
+
+/* Logo Styling - Shared Globally */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.logo-icon span {
+  position: absolute;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--brand-primary), var(--accent));
+}
+
+.logo-icon span:nth-child(1) { width: 22px; height: 14px; top: 0; left: 6px; opacity: 1; }
+.logo-icon span:nth-child(2) { width: 22px; height: 14px; top: 8px; left: 3px; opacity: 0.6; }
+.logo-icon span:nth-child(3) { width: 22px; height: 14px; top: 16px; left: 0; opacity: 0.3; }
+
+.logo-text {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+

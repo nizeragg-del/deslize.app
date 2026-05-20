@@ -68,3 +68,24 @@ export async function signInWithGoogle() {
     redirect(data.url)
   }
 }
+
+export async function resetPasswordEmail(formData: FormData) {
+  const supabase = await createClient()
+
+  const email = formData.get('email') as string
+
+  if (!email) {
+    return { error: 'O e-mail é obrigatório' }
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/dashboard/alterar-senha`,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+

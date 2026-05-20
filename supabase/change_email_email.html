@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirme seu Novo E-mail — Deslize</title>
+  <style>
+    /* Reset & Base Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      height: 100% !important;
+      background-color: #07070D;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #F4F4F8;
+    }
+    
+    /* Container layout */
+    .wrapper {
+      width: 100%;
+      background-color: #07070D;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+    
+    .card {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #0f111a;
+      border: 1px solid #1f2233;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Branding */
+    .logo-text {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-left: 10px;
+      letter-spacing: -0.5px;
+    }
+    
+    /* Typography */
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #8B8BA0;
+      margin-top: 0;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    
+    /* Button */
+    .btn-gradient {
+      display: inline-block;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7C3AED, #06B6D4);
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+      margin-bottom: 24px;
+    }
+    
+    /* Divider */
+    .divider {
+      height: 1px;
+      background-color: #1f2233;
+      margin: 30px 0;
+    }
+    
+    /* Footer */
+    .footer-text {
+      font-size: 12px;
+      color: #5A5A72;
+      line-height: 1.5;
+      margin-bottom: 0;
+    }
+    
+    .footer-text a {
+      color: #06B6D4;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <!-- Logo Deslize -->
+      <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 30px auto;">
+        <tr>
+          <td align="center" valign="middle">
+            <table align="left" border="0" cellpadding="0" cellspacing="0" style="width: 32px; height: 32px; position: relative;">
+              <tr>
+                <td style="position: relative; width: 32px; height: 32px;">
+                  <div style="position: absolute; width: 22px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #7C3AED, #06B6D4); top: 0; left: 6px;"></div>
+                  <div style="position: absolute; width: 22px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #7C3AED, #06B6D4); top: 8px; left: 3px; opacity: 0.6;"></div>
+                  <div style="position: absolute; width: 22px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #7C3AED, #06B6D4); top: 16px; left: 0; opacity: 0.3;"></div>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td align="center" valign="middle" style="padding-left: 10px;">
+            <span class="logo-text" style="font-family: inherit; font-weight: 800; font-size: 24px; color: #ffffff; letter-spacing: -0.5px;">deslize</span>
+          </td>
+        </tr>
+      </table>
+
+      <h1>Alteração de E-mail Solicitada</h1>
+      <p>
+        Olá,<br><br>
+        Recebemos uma solicitação para alterar o endereço de e-mail associado à sua conta no <strong>Deslize</strong>.<br>
+        Para validar este novo endereço de e-mail, por favor, clique no botão abaixo.
+      </p>
+      
+      <!-- Call to Action -->
+      <a href="{{ .ConfirmationURL }}" class="btn-gradient">Confirmar Novo E-mail</a>
+      
+      <p style="font-size: 13px; color: #5A5A72; margin-top: 10px;">
+        <em>Nota de segurança:</em> Se você não fez esta solicitação, sugerimos revisar a segurança da sua conta e alterar sua senha imediatamente no painel de configurações.
+      </p>
+      
+      <div class="divider"></div>
+      
+      <p class="footer-text">
+        &copy; 2026 Deslize — Carrosséis gerados por IA.<br>
+        <a href="https://deslize-app.vercel.app/termos">Termos de Uso</a> &bull; <a href="https://deslize-app.vercel.app/privacidade">Política de Privacidade</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Plus, History, Settings, Sparkles, Menu, X, LogOut } from 'lucide-react'
+import { LayoutDashboard, Plus, History, Settings, Sparkles, Menu, X, LogOut, Mail, KeyRound } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 export default function DashboardLayout({
@@ -78,8 +78,8 @@ export default function DashboardLayout({
 
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-[var(--surface-dark)] border-r border-[var(--border-dark)] p-4">
-      <Link href="/dashboard" className="flex items-center gap-2 mb-8 px-2">
-        <div className="logo-icon scale-75">
+      <Link href="/dashboard" className="logo mb-8 px-2">
+        <div className="logo-icon">
           <span></span><span></span><span></span>
         </div>
         <span className="logo-text text-xl">deslize</span>
@@ -126,10 +126,32 @@ export default function DashboardLayout({
       </div>
 
       {/* User Area */}
-      <div className="pt-4 border-t border-[var(--border-dark)]">
+      <div className="pt-4 border-t border-[var(--border-dark)] space-y-1">
+        <Link 
+          href="/dashboard/alterar-email"
+          className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors ${
+            pathname === '/dashboard/alterar-email'
+              ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-semibold'
+              : 'text-[var(--text-muted)] hover:text-white hover:bg-[#ffffff0a]'
+          }`}
+        >
+          <Mail className="w-5 h-5" />
+          Alterar E-mail
+        </Link>
+        <Link 
+          href="/dashboard/alterar-senha"
+          className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors ${
+            pathname === '/dashboard/alterar-senha'
+              ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-semibold'
+              : 'text-[var(--text-muted)] hover:text-white hover:bg-[#ffffff0a]'
+          }`}
+        >
+          <KeyRound className="w-5 h-5" />
+          Alterar Senha
+        </Link>
         <button 
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors rounded-lg hover:bg-[#ffffff0a]"
+          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors rounded-lg hover:bg-[#ffffff0a] mt-1"
         >
           <LogOut className="w-5 h-5" />
           Sair
