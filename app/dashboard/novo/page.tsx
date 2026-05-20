@@ -42,6 +42,9 @@ export default function NewCarouselPage() {
           .single()
         if (data) {
           setProfile(data)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('profile-updated'))
+          }
         }
       }
     } catch (err) {
@@ -536,7 +539,7 @@ export default function NewCarouselPage() {
           {htmlContent && !loading && (
             <div className="w-full h-full p-4 md:p-8 flex items-center justify-center relative z-10 overflow-hidden">
               {/* Instagram Frame */}
-              <div className="w-full max-w-[400px] bg-surface-dark rounded-xl overflow-hidden relative shadow-2xl border border-white/10 flex flex-col">
+              <div className="w-full max-w-[400px] lg:max-w-[calc(80vh-340px)] bg-surface-dark rounded-xl overflow-hidden relative shadow-2xl border border-white/10 flex flex-col">
                 {/* Header mock */}
                 <div className="flex items-center gap-3 p-3 border-b border-white/10 shrink-0 bg-surface-dark">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">

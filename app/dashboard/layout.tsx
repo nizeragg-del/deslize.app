@@ -54,6 +54,11 @@ export default function DashboardLayout({
       }
     }
     fetchProfile()
+
+    window.addEventListener('profile-updated', fetchProfile)
+    return () => {
+      window.removeEventListener('profile-updated', fetchProfile)
+    }
   }, [])
 
   const handleLogout = async () => {
