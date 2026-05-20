@@ -116,6 +116,7 @@ export default function DashboardHome() {
       setProfile(prev => prev ? { ...prev, credits: newCredits } : null)
       setOnboardingClaimed(true)
       localStorage.setItem(`onboarding_claimed_${user.id}`, 'true')
+      window.dispatchEvent(new Event('profile-updated'))
       alert('Parabéns! 1 Crédito Bônus foi adicionado à sua conta!')
     } catch (err) {
       console.error(err)
