@@ -201,16 +201,39 @@ export default function CarouselHistoryPage() {
               }}
               className="group bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl overflow-hidden hover:border-[var(--brand-primary)]/50 transition-all duration-300 flex flex-col justify-between cursor-pointer"
             >
-              {/* Cover Thumbnail Stack */}
+              {/* Cover Thumbnail Stack - Real Live HTML Slide Preview */}
               <div className="aspect-[4/5] bg-gradient-to-br from-[#ffffff05] to-[#ffffff0a] relative flex items-center justify-center border-b border-[var(--border-dark)] overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise-pattern-with-subtle-cross-lines.png')] opacity-20"></div>
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise-pattern-with-subtle-cross-lines.png')] opacity-10"></div>
                 
-                <div className="relative w-2/3 aspect-square">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-dark)] rounded-xl transform rotate-6 scale-90 opacity-40 group-hover:rotate-12 transition-transform duration-500"></div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-primary)] to-[var(--accent)] rounded-xl transform rotate-3 scale-95 opacity-70 group-hover:rotate-6 transition-transform duration-500"></div>
-                  <div className="absolute inset-0 bg-[var(--bg-dark)] border border-[var(--border-dark)] rounded-xl flex items-center justify-center group-hover:-translate-y-1 group-hover:-translate-x-1 transition-transform duration-500 shadow-xl">
-                    <span className="text-2xl opacity-50 font-[family-name:var(--font-bricolage)] font-bold">1/{carousel.slide_count}</span>
+                {/* Live Preview Container */}
+                <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                  <div className="w-[400px] h-[500px] shrink-0 origin-center scale-[0.55] sm:scale-[0.6] md:scale-[0.55] lg:scale-[0.58] xl:scale-[0.65] rounded-2xl overflow-hidden border border-white/5 shadow-2xl relative" style={{ backgroundColor: '#07070D' }}>
+                    <style dangerouslySetInnerHTML={{__html: `
+                      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&display=swap');
+                      .preview-track-thumb { display: flex; height: 100%; width: 100%; }
+                      .ig-slide { width: 100%; min-width: 100%; flex-shrink: 0; height: 100%; padding: 40px; position: relative; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+                      .slide-tag { position: absolute; top: 40px; left: 40px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); letter-spacing: 2px; }
+                      .slide-logo { position: absolute; top: 40px; right: 40px; display: flex; align-items: center; gap: 8px; }
+                      .slide-logo-dot { width: 16px; height: 16px; border-radius: 50%; }
+                      .slide-logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.5px; }
+                      .slide-num-bg { position: absolute; bottom: 0; right: 0; font-family: inherit; font-size: 240px; font-weight: 800; color: rgba(255,255,255,0.03); line-height: 0.8; }
+                      .slide-h { font-family: inherit; font-weight: 800; line-height: 1.1; margin-bottom: 24px; position: relative; z-index: 10; font-size: 32px;}
+                      .slide-body { font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 90%; position: relative; z-index: 10; }
+                      .slide-progress { position: absolute; bottom: 40px; left: 40px; right: 40px; display: flex; align-items: center; gap: 16px; }
+                      .progress-track { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+                      .progress-fill { height: 100%; background: white; border-radius: 2px; }
+                      .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); }
+                    `}} />
+                    <div 
+                      className="preview-track-thumb"
+                      dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(carousel.html_content) : '' }}
+                    ></div>
                   </div>
+                </div>
+
+                {/* Slide count badge overlay */}
+                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-2.5 py-1 text-[10px] font-bold text-white/90 z-10 flex items-center gap-1 shadow-md">
+                  <span>{carousel.slide_count} slides</span>
                 </div>
               </div>
 
