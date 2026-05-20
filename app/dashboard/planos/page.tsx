@@ -52,7 +52,7 @@ const plans = [
 
 function PlansContent() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
-  const [billingCycle, setBillingCycle] = useState<'mensal' | 'anual'>('anual')
+  const [billingCycle, setBillingCycle] = useState<'mensal' | 'anual'>('mensal')
   const searchParams = useSearchParams()
   const planParam = searchParams?.get('plan')
 
