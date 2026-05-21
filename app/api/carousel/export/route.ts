@@ -40,7 +40,16 @@ export async function POST(req: Request) {
     // font sizes, and Tailwind classes all behave identically to what the user sees.
     const SLIDE_W = 360  // CSS pixels — scales to 1080px at 3x
     const SLIDE_H = 450  // CSS pixels — scales to 1350px at 3x
-    const DPR = 3        // devicePixelRatio: 360 * 3 = 1080, 450 * 3 = 1350
+    const DPR = 3        // devicePixelRatio: 360 * 3 = 1080, 45    // Extract any <style> blocks from incoming html to inject them into the <head>
+    let extractedStyles = ''
+    let cleanedHtml = html
+    
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi
+    let match
+    while ((match = styleRegex.exec(html)) !== null) {
+      extractedStyles += match[1] + '\n'
+    }
+    cleanedHtml = html.replace(styleRegex, '')
 
     await page.setViewport({ width: slideCount * SLIDE_W, height: SLIDE_H, deviceScaleFactor: DPR })
 
@@ -53,7 +62,7 @@ export async function POST(req: Request) {
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=Share+Tech+Mono:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
           <!-- Tailwind CSS Play CDN: compiles all utility classes (w-5, h-5, rounded-2xl, inline-flex, grid, etc.) -->
-          <script src="https://cdn.tailwindcss.com"><\/script>
+          <script src="https://cdn.tailwindcss.com"></script>
           <style>
             * { box-sizing: border-box; }
             body { margin: 0; padding: 0; background: #0A0A0F; color: white; font-family: sans-serif; }
@@ -79,10 +88,13 @@ export async function POST(req: Request) {
             .progress-fill { height: 100%; background: white; border-radius: 2px; }
             .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); white-space: nowrap; }
           </style>
+          <style>
+            ${extractedStyles}
+          </style>
         </head>
         <body>
           <div class="preview-track" id="track">
-            ${html}
+            ${cleanedHtml}
           </div>
         </body>
       </html>

@@ -226,27 +226,47 @@ export default function CarouselHistoryPage() {
   }
 
   // Re-apply current brand colors to stored HTML (which has old colors baked in)
-  const applyBrandColors = (html: string): string => {
+  // scopeId: when provided, scopes injected CSS overrides to avoid leakage between cards
+  const applyBrandColors = (html: string, scopeId?: string): string => {
     if (!html || !brand?.primary_color) return html
-    const p = brand.primary_color
-    const s = brand.secondary_color || brand.primary_color
+    const newP = brand.primary_color
+    const newS = brand.secondary_color || brand.primary_color
 
-    // 1. Replace slide-logo-dot inline background-color (handles both attribute orders)
+    // ── Step 1: Extract the OLD primary color from the baked-in HTML ──────────
+    // Try slide-logo-dot inline style (most reliable anchor)
+    const dotMatch =
+      html.match(/class="slide-logo-dot"[^>]*style="background-color:\s*(#[0-9a-fA-F]{3,8})/i) ||
+      html.match(/style="background-color:\s*(#[0-9a-fA-F]{3,8})"[^>]*class="slide-logo-dot"/i)
+    const oldP = dotMatch ? dotMatch[1].toLowerCase() : null
+
+    // Try gradient for old secondary (first stop of a 135deg gradient)
+    const gradMatch = html.match(/linear-gradient\(135deg,\s*(#[0-9a-fA-F]{3,8})/i)
+    const oldS = gradMatch ? gradMatch[1].toLowerCase() : oldP
+
+    // ── Step 2: Global hex replacement (covers glows, borders, SVGs, panels) ─
     let result = html
-      .replace(/(<div[^>]*class="slide-logo-dot"[^>]*style=")background-color:[^;"]+/g, `$1background-color: ${p}`)
-      .replace(/(style="background-color:)[^"]+(")[^>]*class="slide-logo-dot"/g, `$1${p}$2 class="slide-logo-dot"`)
+    if (oldP && oldP !== newP.toLowerCase()) {
+      const escP = oldP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      result = result.replace(new RegExp(escP, 'gi'), newP)
+    }
+    if (oldS && oldS !== newS.toLowerCase() && oldS !== oldP) {
+      const escS = oldS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      result = result.replace(new RegExp(escS, 'gi'), newS)
+    }
 
-    // 2. Inject a CSS override block to recolor gradient-span and slide-tag
+    // ── Step 3: Inject scoped CSS overrides for gradient-span, slide-tag, uppercase ──
+    const scope = scopeId ? `#${scopeId} ` : ''
     const override = `<style>
-      .gradient-span {
-        background-image: linear-gradient(135deg, ${p}, ${s}) !important;
+      ${scope}.gradient-span {
+        background-image: linear-gradient(135deg, ${newP}, ${newS}) !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
         background-clip: text !important;
         color: transparent !important;
       }
-      .slide-tag { color: ${p} !important; }
-      svg[style*="color"] { color: ${p} !important; }
+      ${scope}.slide-tag { color: ${newP} !important; }
+      ${scope}.title-font, ${scope}.slide-h[class*="uppercase"] { text-transform: uppercase !important; }
+      ${scope}svg[style*="color"] { color: ${newP} !important; }
     </style>`
     return override + result
   }
@@ -404,6 +424,7 @@ export default function CarouselHistoryPage() {
                 {filteredCarousels.map((carousel) => (
                   <div 
                     key={carousel.id} 
+                    id={`cc-${carousel.id}`}
                     onClick={() => {
                       setSelectedCarousel(carousel)
                       setCurrentSlide(0)
@@ -448,7 +469,7 @@ export default function CarouselHistoryPage() {
                           `}} />
                           <div 
                             className="preview-track-thumb"
-                            dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
+                            dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content, `cc-${carousel.id}`), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                           ></div>
                         </div>
                       </div>
@@ -661,6 +682,7 @@ export default function CarouselHistoryPage() {
                     
                     <div 
                       className="preview-track"
+                      id="modal-vp"
                       style={{ 
                         display: "flex", 
                         height: "100%",
@@ -668,7 +690,7 @@ export default function CarouselHistoryPage() {
                         transform: `translateX(calc(-${currentSlide * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1)"
                       }}
-                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(applyBrandColors(selectedCarousel.html_content), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
+                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(applyBrandColors(selectedCarousel.html_content, 'modal-vp'), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
 
