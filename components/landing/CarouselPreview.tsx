@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { Logo } from "@/components/Logo";
 
 const TOTAL_SLIDES = 7;
 
@@ -55,7 +56,9 @@ export function CarouselPreview() {
     <div className="demo-preview">
       <div className="ig-frame">
         <div className="ig-header">
-          <div className="ig-avatar">D</div>
+          <div className="ig-avatar">
+            <Logo markOnly />
+          </div>
           <div style={{ flex: 1 }}>
             <div className="ig-handle">@deslize.ai</div>
             <div className="ig-sub">Ferramenta para Criadores</div>
@@ -101,7 +104,7 @@ export function CarouselPreview() {
                   CRIAÇÃO DE CONTEÚDO
                 </div>
                 <div className="slide-logo">
-                  <div className="slide-logo-dot"></div>
+                  <Logo markOnly size={18} className="slide-logo-mark" />
                   <div className="slide-logo-text">DESLIZE</div>
                 </div>
                 <div className="slide-content" style={{ paddingBottom: "52px" }}>
@@ -220,7 +223,7 @@ export function CarouselPreview() {
               {/* Slide 7: CTA */}
               <div className="ig-slide s7" style={{ width: "100%", minWidth: "100%", flexShrink: 0 }}>
                 <div className="slide-logo">
-                  <div className="slide-logo-dot"></div>
+                  <Logo markOnly size={18} className="slide-logo-mark" />
                   <div className="slide-logo-text">DESLIZE</div>
                 </div>
                 <div className="slide-content" style={{ paddingBottom: "52px", display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", alignItems: "center", textAlign: "center" }}>

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,10 +46,7 @@ export function Navbar() {
         }}
       >
         <Link href="/" className="logo">
-          <div className="logo-icon">
-            <span></span><span></span><span></span>
-          </div>
-          <span className="logo-text">deslize</span>
+          <Logo />
         </Link>
         
         {/* Desktop Links */}

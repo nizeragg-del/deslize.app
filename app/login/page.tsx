@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { login, signup, signInWithGoogle, resetPasswordEmail } from './actions'
+import { Logo } from '@/components/Logo'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
@@ -68,10 +69,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <Link href="/" className="logo mb-6 inline-flex items-center justify-center">
-            <div className="logo-icon">
-              <span></span><span></span><span></span>
-            </div>
-            <span className="logo-text text-xl">deslize</span>
+            <Logo width={220} />
           </Link>
           
           <h1 className="text-3xl font-[family-name:var(--font-bricolage)] font-bold mb-2 text-white">

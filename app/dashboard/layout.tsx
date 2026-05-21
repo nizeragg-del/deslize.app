@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Plus, History, Settings, Sparkles, Menu, X, LogOut, Mail, KeyRound, User } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { Logo } from '@/components/Logo'
 
 export default function DashboardLayout({
   children,
@@ -83,10 +84,7 @@ export default function DashboardLayout({
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-[var(--surface-dark)] border-r border-[var(--border-dark)] p-4">
       <Link href="/dashboard" className="logo mb-8 px-2">
-        <div className="logo-icon">
-          <span></span><span></span><span></span>
-        </div>
-        <span className="logo-text text-xl">deslize</span>
+        <Logo />
       </Link>
 
       <nav className="flex-1 space-y-1">

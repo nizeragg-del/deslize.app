@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { ArrowLeft, Shield, Lock, Eye, Database } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 
 export default function PrivacidadePage() {
   return (
@@ -14,10 +15,7 @@ export default function PrivacidadePage() {
       <header className="border-b border-[var(--border-dark)] bg-[var(--surface-dark)]/40 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="logo">
-            <div className="logo-icon">
-              <span></span><span></span><span></span>
-            </div>
-            <span className="logo-text text-lg">deslize</span>
+            <Logo />
           </Link>
           <Link 
             href="/login" 
