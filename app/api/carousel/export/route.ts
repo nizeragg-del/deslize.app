@@ -60,7 +60,7 @@ export async function POST(req: Request) {
             .preview-track { display: flex; width: ${slideCount * SLIDE_W}px; height: ${SLIDE_H}px; }
             .ig-slide {
               width: ${SLIDE_W}px; height: ${SLIDE_H}px;
-              padding: 40px; padding-top: 85px;
+              padding: 40px; padding-top: 85px; padding-bottom: 85px;
               position: relative; display: flex; flex-direction: column;
               justify-content: center; overflow: hidden; flex-shrink: 0;
             }

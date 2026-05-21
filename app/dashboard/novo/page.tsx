@@ -713,7 +713,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                     <style dangerouslySetInnerHTML={{__html: `
                       @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&display=swap');
                       .preview-track { display: flex; height: 100%; }
-                      .ig-slide { width: 100%; min-width: 100%; flex-shrink: 0; height: 100%; padding: 40px; padding-top: 85px; position: relative; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+                      .ig-slide { width: 100%; min-width: 100%; flex-shrink: 0; height: 100%; padding: 40px; padding-top: 85px; padding-bottom: 85px; position: relative; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
                       .slide-tag { position: absolute; top: 40px; left: 40px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); letter-spacing: 2px; }
                       .slide-logo { position: absolute; top: 40px; right: 40px; display: flex; items-center; gap: 8px; }
                       .slide-logo-dot { width: 16px; height: 16px; border-radius: 50%; }

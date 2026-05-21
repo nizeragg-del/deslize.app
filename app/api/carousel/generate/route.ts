@@ -254,7 +254,7 @@ REGRAS DE CONTEXTO E FLUXO:
    - Envolva as palavras-chave mais impactantes em tags <span class="gradient-span"> para aplicar o gradiente brilhante da marca.
    - Use uma distribuição limpa, deixando espaço para o texto respirar e posicionando dois glows ambientais distantes (ex: um no topo esquerdo e um no canto inferior direito) para dar um efeito de iluminação volumétrica sofisticada de fundo.
    - NÃO use parágrafos longos ou genéricos de corpo no Slide 1; no máximo uma linha curta ou subtítulo elegante e direto de apoio (ex: "Descubra como em 3 passos rápidos.").
-2. Os slides do meio devem desenvolver o conteúdo de forma escaneável. Evite parágrafos longos. Use listas decoradas, grids lado a lado ou caixas de destaque.
+2. SLIDES CONCISOS (MUITO IMPORTANTE): A área útil vertical do carrossel é EXTREMAMENTE PEQUENA (360x450). Se você gerar parágrafos longos, muitos bullet points, ou empilhar vários elementos visuais no mesmo slide, o conteúdo VAZARÁ e será CORTADO no rodapé. Divida conteúdos maiores em múltiplos slides ao invés de encher um só. Mantenha no máximo 1 título curto + 2 frases de corpo por slide.
 3. Alterne o ritmo visual: crie layouts ligeiramente diferentes entre os slides (ex: slide 2 com lista, slide 3 com caixa de destaque centralizada, slide 4 com colunas antes/depois, slide 5 com métrica ou citação).
 4. O último slide DEVE conter um CTA marcante (ex: "Salve este post para ler depois" ou "Compartilhe com um amigo") acompanhado do logotipo da marca.
 
@@ -276,6 +276,10 @@ Para EVITAR isso, o PRIMEIRO elemento de conteúdo dentro do .ig-slide (logo ap�
   <div style="height: 40px; flex-shrink: 0;"></div>
 Este espaçador garante clearance mínimo entre o cabeçalho e o conteúdo, independente da altura total do slide.
 NUNCA deixe o título ou qualquer conteúdo visualmente sobrepor o .slide-logo ou .slide-tag.
+
+⚠️ ZONA DO RODAPÉ — PREVENÇÃO CONTRA CORTE DE TEXTO:
+Assim como o topo, a parte inferior do slide possui uma barra de progresso (bottom: 40px). 
+Você NUNCA deve estourar o limite de conteúdo vertical do slide. Para isso, mantenha as mensagens diretas e NÃO acumule textos no corpo. Se o texto for grande, crie outro slide para continuá-lo.
 
 ⚠️ TAMANHO DE FONTES — REGRA CRÍTICA ANTI-SOBREPOSIÇÃO:
 É ABSOLUTAMENTE PROIBIDO o uso de classes utilitárias de tamanho de fonte do Tailwind (como text-4xl, text-5xl, text-6xl, text-7xl, text-8xl) em títulos ou textos de corpo. 
