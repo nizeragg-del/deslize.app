@@ -289,6 +289,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Erro ao inicializar perfil de usuario.' }, { status: 500 })
     }
 
+    const { data: profileBeforeConsume, error: profileBeforeError } = await supabaseAdmin
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .single()
+
+    if (profileBeforeError) {
+      console.error('Error loading credits before generation:', profileBeforeError)
+      return NextResponse.json({ error: 'Erro ao validar saldo de creditos.' }, { status: 500 })
+    }
+
+    const creditsBeforeConsume = profileBeforeConsume?.credits ?? 0
+
     const { data: consumeRows, error: consumeError } = await supabaseAdmin
       .rpc('consume_credit', {
         p_user_id: user.id,
@@ -304,8 +317,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Erro ao consumir credito.' }, { status: 500 })
     }
 
+    const consumedCreditResult = Array.isArray(consumeRows) ? consumeRows[0] : null
+    const creditsAfterConsume = consumedCreditResult?.new_credits
+
+    if (typeof creditsAfterConsume !== 'number' || creditsAfterConsume >= creditsBeforeConsume) {
+      console.error('Credit consumption did not reduce balance:', {
+        userId: user.id,
+        creditsBeforeConsume,
+        creditsAfterConsume
+      })
+
+      return NextResponse.json(
+        { error: 'Erro ao debitar credito. Tente novamente em alguns instantes.' },
+        { status: 500 }
+      )
+    }
+
     creditConsumed = true
-    consumedTransactionId = consumeRows?.[0]?.transaction_id ?? null
+    consumedTransactionId = consumedCreditResult?.transaction_id ?? null
     // Construct the prompt
     const prompt = `
 Você é um designer de produto e copywriter especialista em Instagram de altíssimo nível.
