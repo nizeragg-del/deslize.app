@@ -250,7 +250,7 @@ ${fontHeaderImport}
 
 REGRAS DE CONTEXTO E FLUXO:
 1. O primeiro slide (Slide 1 - Hero/Hook) deve ter um impacto visual avassalador:
-   - Use um título monumental com tamanho enorme (font-size: 38px a 44px).
+   - Use um título monumental e de peso visual máximo. O tamanho do título é controlado pelo CSS da classe .slide-h — NÃO adicione font-size inline no elemento .slide-h (isso quebraria o export em alta resolução).
    - Envolva as palavras-chave mais impactantes em tags <span class="gradient-span"> para aplicar o gradiente brilhante da marca.
    - Use uma distribuição limpa, deixando espaço para o texto respirar e posicionando dois glows ambientais distantes (ex: um no topo esquerdo e um no canto inferior direito) para dar um efeito de iluminação volumétrica sofisticada de fundo.
    - NÃO use parágrafos longos ou genéricos de corpo no Slide 1; no máximo uma linha curta ou subtítulo elegante e direto de apoio (ex: "Descubra como em 3 passos rápidos.").
@@ -268,6 +268,17 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
   * Título do slide: <div class="slide-h title-font">...</div>
   * Texto de corpo: <div class="slide-body body-font">...</div>
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
+
+⚠️ ZONA DO CABEÇALHO — REGRA CRÍTICA ANTI-SOBREPOSIÇÃO:
+Os elementos .slide-tag e .slide-logo são posicionados ABSOLUTAMENTE no topo do slide (top: 40px).
+O conteúdo flexível (.slide-h, .slide-body, etc.) é centralizado verticalmente — se o conteúdo for alto, ele pode subir e SOBREPOR o cabeçalho.
+Para EVITAR isso, o PRIMEIRO elemento de conteúdo dentro do .ig-slide (logo após o .slide-logo) DEVE ser um espaçador:
+  <div style="height: 40px; flex-shrink: 0;"></div>
+Este espaçador garante clearance mínimo entre o cabeçalho e o conteúdo, independente da altura total do slide.
+NUNCA deixe o título ou qualquer conteúdo visualmente sobrepor o .slide-logo ou .slide-tag.
+
+⚠️ TAMANHO DE FONTES — REGRA CRÍTICA ANTI-INCONSISTÊNCIA DE EXPORT:
+NUNCA adicione font-size inline no elemento .slide-h. O tamanho é definido pelo CSS. Se precisar de texto MENOR que o padrão, use classes Tailwind (ex: text-xl, text-2xl) em um div separado, nunca no .slide-h.
 
 BIBLIOTECA DE ÍCONES (Use estes SVGs limpos no lugar de emojis ou marcadores genéricos):
 - Checkmark verde/marca: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
