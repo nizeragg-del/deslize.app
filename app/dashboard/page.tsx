@@ -503,7 +503,7 @@ export default function DashboardHome() {
                       `}} />
                       <div 
                         className="preview-track-thumb"
-                        dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(carousel.html_content) : '' }}
+                        dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(carousel.html_content, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                       ></div>
                     </div>
                   </div>
@@ -745,7 +745,7 @@ export default function DashboardHome() {
                         transform: `translateX(calc(-${currentSlide * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1)"
                       }}
-                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(selectedCarousel.html_content) : '' }}
+                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(selectedCarousel.html_content, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
 

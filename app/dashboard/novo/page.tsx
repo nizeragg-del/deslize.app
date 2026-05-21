@@ -736,7 +736,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                         transform: `translateX(calc(-${currentSlide * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1)"
                       }}
-                      dangerouslySetInnerHTML={{ __html: htmlContent ? DOMPurify.sanitize(htmlContent) : '' }}
+                      dangerouslySetInnerHTML={{ __html: htmlContent ? DOMPurify.sanitize(htmlContent, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
 
@@ -885,7 +885,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 </div>
               ))}
               <div className="aspect-square rounded-md overflow-hidden relative border border-[var(--brand-primary)]/50 shadow-[0_0_15px_rgba(124,58,237,0.3)] bg-[var(--bg-dark)]">
-                <div className="w-[300%] h-[300%] origin-top-left scale-[0.333]" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getCoverSlideHtml()) }}></div>
+                <div className="w-[300%] h-[300%] origin-top-left scale-[0.333]" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getCoverSlideHtml(), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) }}></div>
               </div>
             </div>
             <p className="text-xs text-[var(--text-muted)] mt-4 text-center">
