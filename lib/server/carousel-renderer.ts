@@ -52,7 +52,7 @@ export async function renderCarouselToPngs({
 
   try {
     const page = await browser.newPage()
-    await page.setViewport({ width: slideCount * SLIDE_W, height: SLIDE_H, deviceScaleFactor: DPR })
+    await page.setViewport({ width: SLIDE_W, height: SLIDE_H, deviceScaleFactor: DPR })
 
     const fullHtml = `
       <!DOCTYPE html>
@@ -67,7 +67,6 @@ export async function renderCarouselToPngs({
             * { box-sizing: border-box; }
             body { margin: 0; padding: 0; background: #0A0A0F; color: white; font-family: sans-serif; }
             svg { max-width: 100%; max-height: 100%; display: inline-block; }
-            .preview-track { display: flex; width: ${slideCount * SLIDE_W}px; height: ${SLIDE_H}px; }
             .ig-slide {
               width: ${SLIDE_W}px; height: ${SLIDE_H}px;
               padding: 40px; padding-top: 85px; padding-bottom: 85px;
@@ -87,9 +86,34 @@ export async function renderCarouselToPngs({
             .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); white-space: nowrap; }
           </style>
           <style>${extractedStyles}</style>
+          <style>
+            html, body, #stage {
+              width: ${SLIDE_W}px !important;
+              height: ${SLIDE_H}px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              background: transparent !important;
+            }
+            #source {
+              display: none !important;
+            }
+            #stage > .ig-slide {
+              width: ${SLIDE_W}px !important;
+              min-width: ${SLIDE_W}px !important;
+              max-width: ${SLIDE_W}px !important;
+              height: ${SLIDE_H}px !important;
+              min-height: ${SLIDE_H}px !important;
+              max-height: ${SLIDE_H}px !important;
+              flex: 0 0 ${SLIDE_W}px !important;
+              margin: 0 !important;
+              transform: none !important;
+            }
+          </style>
         </head>
         <body>
-          <div class="preview-track" id="track">${cleanedHtml}</div>
+          <div id="stage"></div>
+          <div id="source">${cleanedHtml}</div>
         </body>
       </html>
     `
@@ -112,13 +136,27 @@ export async function renderCarouselToPngs({
     const slideRows: Array<{ carousel_id: string; slide_index: number; storage_path: string; width: number; height: number }> = []
 
     for (let i = 0; i < slideCount; i++) {
+      const hasSlide = await page.evaluate((index) => {
+        const stage = document.getElementById('stage')
+        const source = document.getElementById('source')
+        const slides = Array.from(source?.querySelectorAll('.ig-slide') ?? [])
+        const slide = slides[index] as HTMLElement | undefined
+
+        if (!stage || !slide) {
+          return false
+        }
+
+        stage.innerHTML = slide.outerHTML
+        return true
+      }, i)
+
+      if (!hasSlide) {
+        console.warn(`Slide ${i + 1} nao encontrado no HTML renderizado`)
+        continue
+      }
+
       const screenshotBuffer = await page.screenshot({
-        clip: {
-          x: i * SLIDE_W,
-          y: 0,
-          width: SLIDE_W,
-          height: SLIDE_H
-        },
+        clip: { x: 0, y: 0, width: SLIDE_W, height: SLIDE_H },
         type: 'png'
       })
 
