@@ -44,3 +44,14 @@ export function snapshotCarouselTrack(track: HTMLElement | null) {
 
   return clone.innerHTML
 }
+
+export function getCarouselSlideUrls(supabase: any, carousel: any): string[] {
+  const slides = Array.isArray(carousel?.slides) ? carousel.slides : []
+
+  return slides
+    .slice()
+    .sort((a: any, b: any) => (a.slide_index ?? 0) - (b.slide_index ?? 0))
+    .map((slide: any) => slide.storage_path)
+    .filter(Boolean)
+    .map((path: string) => supabase.storage.from('slides').getPublicUrl(path).data.publicUrl)
+}

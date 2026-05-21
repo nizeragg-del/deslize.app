@@ -18,6 +18,7 @@ export default function NewCarouselPage() {
   const [visualTheme, setVisualTheme] = useState('Mínimo Moderno')
   const [htmlContent, setHtmlContent] = useState<string | null>(null)
   const [carouselId, setCarouselId] = useState<string | null>(null)
+  const [renderedSlideUrls, setRenderedSlideUrls] = useState<string[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
 
   const [dragOffset, setDragOffset] = useState(0)
@@ -216,6 +217,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
     
     setLoading(true)
     setHtmlContent(null)
+    setRenderedSlideUrls([])
 
     // Lookup active brand kit
     const activeBrand = brands.find(b => b.id === selectedBrandId)
@@ -251,6 +253,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
       if (data.success) {
         setHtmlContent(data.html)
         setCarouselId(data.carouselId)
+        setRenderedSlideUrls(Array.isArray(data.slideUrls) ? data.slideUrls : [])
         setCurrentSlide(0)
         await refreshProfile() // Update credits in UI after generation.
 
@@ -324,10 +327,33 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
   }
 
   const handleExport = async () => {
-    if (!htmlContent) return
+    if (!htmlContent && renderedSlideUrls.length === 0) return
 
     setLoading(true)
     try {
+      if (renderedSlideUrls.length > 0) {
+        const zip = new JSZip()
+
+        await Promise.all(
+          renderedSlideUrls.map(async (url: string, index: number) => {
+            const imgRes = await fetch(url)
+            const blob = await imgRes.blob()
+            zip.file(`slide_${index + 1}.png`, blob)
+          })
+        )
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const downloadUrl = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = `${(topic || 'carrossel').trim().replace(/\s+/g, '_')}.zip`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(downloadUrl)
+        return
+      }
+
       const exportHtml = snapshotCarouselTrack(viewportRef.current?.querySelector('.preview-track') ?? null) || htmlContent
       const res = await fetch('/api/carousel/export', {
         method: 'POST',
@@ -593,9 +619,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            {htmlContent ? 'Preview interativo' : 'Aguardando configuração'}
+            {renderedSlideUrls.length > 0 ? 'PNG final renderizado' : htmlContent ? 'Preview interativo' : 'Aguardando configuracao'}
           </div>
-          {htmlContent && (
+          {(htmlContent || renderedSlideUrls.length > 0) && (
             <div className="flex gap-2">
               <button 
                 onClick={() => setIsGridModalOpen(true)}
@@ -683,7 +709,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             </div>
           )}
 
-          {htmlContent && !loading && (
+          {(htmlContent || renderedSlideUrls.length > 0) && !loading && (
             <div className="w-full h-full p-4 md:p-8 flex items-center justify-center relative z-10 overflow-hidden">
               {/* Instagram Frame */}
               <div className="w-full max-w-[360px] bg-surface-dark rounded-xl overflow-hidden relative shadow-2xl border border-white/10 flex flex-col">
@@ -701,6 +727,30 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 {/* Slider Viewport Container */}
                 <div style={{ position: 'relative' }}>
                   {/* Slider Viewport */}
+                  {renderedSlideUrls.length > 0 ? (
+                    <div
+                      className="relative overflow-hidden bg-bg-dark"
+                      style={{
+                        aspectRatio: '4/5',
+                        cursor: isDragging ? "grabbing" : "grab",
+                        userSelect: "none"
+                      }}
+                      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+                      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+                      onTouchEnd={(e) => handleEnd(e.changedTouches[0]?.clientX)}
+                      onMouseDown={(e) => { handleStart(e.clientX); e.preventDefault(); }}
+                      onMouseMove={(e) => { if (isDragging) handleMove(e.clientX); }}
+                      onMouseUp={(e) => handleEnd(e.clientX)}
+                      onMouseLeave={() => handleEnd()}
+                    >
+                      <img
+                        src={renderedSlideUrls[currentSlide] || renderedSlideUrls[0]}
+                        alt={`Slide ${currentSlide + 1}`}
+                        className="w-full h-full object-cover select-none"
+                        draggable={false}
+                      />
+                    </div>
+                  ) : (
                   <div 
                     className="relative overflow-hidden bg-bg-dark"
                     ref={viewportRef}
@@ -747,6 +797,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                       dangerouslySetInnerHTML={{ __html: htmlContent ? DOMPurify.sanitize(htmlContent, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
+                  )}
 
                   {/* Persistent Progress Bar Overlay */}
                   <div 

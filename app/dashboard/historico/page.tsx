@@ -6,7 +6,7 @@ import { Plus, Eye, Download, Trash2, Calendar, Layout, X, RefreshCw, Star, Fold
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
-import { snapshotCarouselTrack } from '@/lib/carousel-export'
+import { getCarouselSlideUrls, snapshotCarouselTrack } from '@/lib/carousel-export'
 
 export default function CarouselHistoryPage() {
   const [loading, setLoading] = useState(true)
@@ -89,7 +89,7 @@ export default function CarouselHistoryPage() {
 
       const { data, error } = await supabase
         .from('carousels')
-        .select('*')
+        .select('*, slides(slide_index, storage_path)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -143,6 +143,30 @@ export default function CarouselHistoryPage() {
   const handleExport = async (carousel: any) => {
     setExportLoading(true)
     try {
+      const savedSlideUrls = getCarouselSlideUrls(supabase, carousel)
+      if (savedSlideUrls.length > 0) {
+        const zip = new JSZip()
+
+        await Promise.all(
+          savedSlideUrls.map(async (url: string, index: number) => {
+            const imgRes = await fetch(url)
+            const blob = await imgRes.blob()
+            zip.file(`slide_${index + 1}.png`, blob)
+          })
+        )
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const downloadUrl = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = `${(carousel.title || 'carrossel').trim().replace(/\s+/g, '_')}.zip`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(downloadUrl)
+        return
+      }
+
       const modalTrack = selectedCarousel?.id === carousel.id
         ? viewportRef.current?.querySelector<HTMLElement>('.preview-track')
         : null
@@ -455,6 +479,14 @@ export default function CarouselHistoryPage() {
                       
                       {/* Live Preview Container */}
                       <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                        {getCarouselSlideUrls(supabase, carousel)[0] ? (
+                          <img
+                            src={getCarouselSlideUrls(supabase, carousel)[0]}
+                            alt={carousel.title || 'Carrossel'}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            draggable={false}
+                          />
+                        ) : (
                         <div className="w-[400px] h-[500px] shrink-0 origin-center scale-[0.55] sm:scale-[0.6] md:scale-[0.55] lg:scale-[0.58] xl:scale-[0.65] rounded-2xl overflow-hidden border border-white/5 shadow-2xl relative" style={{ backgroundColor: '#07070D' }}>
                           <style dangerouslySetInnerHTML={{__html: `
                             @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&display=swap');
@@ -478,6 +510,7 @@ export default function CarouselHistoryPage() {
                             dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content, `cc-${carousel.id}`), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                           ></div>
                         </div>
+                        )}
                       </div>
 
                       {/* Slide count badge overlay */}
@@ -652,6 +685,31 @@ export default function CarouselHistoryPage() {
 
                 {/* Slider */}
                 <div style={{ position: 'relative' }}>
+                  {getCarouselSlideUrls(supabase, selectedCarousel).length > 0 ? (
+                    <div
+                      className="relative overflow-hidden bg-[#0A0A0F]"
+                      ref={viewportRef}
+                      style={{
+                        aspectRatio: '4/5',
+                        cursor: isDragging ? "grabbing" : "grab",
+                        userSelect: "none"
+                      }}
+                      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+                      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+                      onTouchEnd={(e) => handleEnd(e.changedTouches[0]?.clientX)}
+                      onMouseDown={(e) => { handleStart(e.clientX); e.preventDefault(); }}
+                      onMouseMove={(e) => { if (isDragging) handleMove(e.clientX); }}
+                      onMouseUp={(e) => handleEnd(e.clientX)}
+                      onMouseLeave={() => handleEnd()}
+                    >
+                      <img
+                        src={getCarouselSlideUrls(supabase, selectedCarousel)[currentSlide] || getCarouselSlideUrls(supabase, selectedCarousel)[0]}
+                        alt={`Slide ${currentSlide + 1}`}
+                        className="w-full h-full object-cover select-none"
+                        draggable={false}
+                      />
+                    </div>
+                  ) : (
                   <div 
                     className="relative overflow-hidden bg-[#0A0A0F]"
                     ref={viewportRef}
@@ -699,6 +757,7 @@ export default function CarouselHistoryPage() {
                       dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(applyBrandColors(selectedCarousel.html_content, 'modal-vp'), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
+                  )}
 
                   {/* Indicator overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10 flex items-center gap-3">

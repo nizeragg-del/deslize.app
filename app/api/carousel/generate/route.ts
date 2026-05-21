@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { renderCarouselToPngs } from '@/lib/server/carousel-renderer'
+
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   let creditConsumed = false
@@ -471,10 +474,26 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
       }
     }
 
+    let slideUrls: string[] = []
+    if (carousel?.id) {
+      try {
+        slideUrls = await renderCarouselToPngs({
+          supabase: supabaseAdmin,
+          userId: user.id,
+          carouselId: carousel.id,
+          html: finalHtml,
+          slideCount
+        })
+      } catch (renderError) {
+        console.error('Error rendering canonical carousel PNGs:', renderError)
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       html: finalHtml,
-      carouselId: carousel?.id || null
+      carouselId: carousel?.id || null,
+      slideUrls
     })
 
   } catch (error: any) {
