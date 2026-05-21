@@ -9,7 +9,7 @@ import JSZip from 'jszip'
 
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<{ credits: number; plan: string } | null>(null)
+  const [profile, setProfile] = useState<{ credits: number; plan: string; onboarding_bonus_claimed?: boolean } | null>(null)
   const [carousels, setCarousels] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [selectedCarousel, setSelectedCarousel] = useState<any | null>(null)
@@ -41,7 +41,7 @@ export default function DashboardHome() {
       // 1. Fetch profile
       let { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('credits, plan')
+        .select('credits, plan, onboarding_bonus_claimed')
         .eq('id', user.id)
         .single()
 
@@ -56,7 +56,7 @@ export default function DashboardHome() {
             plan: 'free',
             credits: 1
           })
-          .select('credits, plan')
+          .select('credits, plan, onboarding_bonus_claimed')
           .single()
 
         if (newProfile) {
@@ -93,7 +93,7 @@ export default function DashboardHome() {
       }
       setUserId(user.id)
       setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Criador')
-      setOnboardingClaimed(localStorage.getItem(`onboarding_claimed_${user.id}`) === 'true')
+      setOnboardingClaimed(Boolean(profileData?.onboarding_bonus_claimed))
 
       setLoading(false)
     }
@@ -107,20 +107,17 @@ export default function DashboardHome() {
     if (claimingOnboarding || onboardingClaimed) return
     setClaimingOnboarding(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      
-      const newCredits = (profile?.credits || 0) + 1
-      const { error } = await supabase
-        .from('profiles')
-        .update({ credits: newCredits })
-        .eq('id', user.id)
+      const res = await fetch('/api/onboarding/claim-bonus', {
+        method: 'POST'
+      })
+      const data = await res.json()
 
-      if (error) throw error
-      
-      setProfile(prev => prev ? { ...prev, credits: newCredits } : null)
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao resgatar bonus.')
+      }
+
+      setProfile(prev => prev ? { ...prev, credits: data.credits, onboarding_bonus_claimed: true } : null)
       setOnboardingClaimed(true)
-      localStorage.setItem(`onboarding_claimed_${user.id}`, 'true')
       window.dispatchEvent(new Event('profile-updated'))
       alert('Parabéns! 1 Crédito Bônus foi adicionado à sua conta!')
     } catch (err) {
@@ -250,50 +247,37 @@ export default function DashboardHome() {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  // Re-apply current brand colors to stored HTML (which has old colors baked in)
-  // scopeId: when provided, scopes injected CSS overrides to avoid leakage between cards
+  // Scopes HTML styles dynamically based on the wrapper ID to avoid CSS leakage between grid cards.
+  // We bypass dynamic brand color overrides so that historic carousels perfectly lock their design
+  // with whatever Brand Kit was active at their exact generation time.
   const applyBrandColors = (html: string, scopeId?: string): string => {
-    if (!html || !brand?.primary_color) return html
-    const newP = brand.primary_color
-    const newS = brand.secondary_color || brand.primary_color
+    if (!html) return html
+    if (!scopeId) return html
 
-    // ── Step 1: Extract the OLD primary color from the baked-in HTML ──────────
-    // Try slide-logo-dot inline style (most reliable anchor)
-    const dotMatch =
-      html.match(/class="slide-logo-dot"[^>]*style="background-color:\s*(#[0-9a-fA-F]{3,8})/i) ||
-      html.match(/style="background-color:\s*(#[0-9a-fA-F]{3,8})"[^>]*class="slide-logo-dot"/i)
-    const oldP = dotMatch ? dotMatch[1].toLowerCase() : null
-
-    // Try gradient for old secondary (first stop of a 135deg gradient)
-    const gradMatch = html.match(/linear-gradient\(135deg,\s*(#[0-9a-fA-F]{3,8})/i)
-    const oldS = gradMatch ? gradMatch[1].toLowerCase() : oldP
-
-    // ── Step 2: Global hex replacement (covers glows, borders, SVGs, panels) ─
-    let result = html
-    if (oldP && oldP !== newP.toLowerCase()) {
-      const escP = oldP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      result = result.replace(new RegExp(escP, 'gi'), newP)
-    }
-    if (oldS && oldS !== newS.toLowerCase() && oldS !== oldP) {
-      const escS = oldS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      result = result.replace(new RegExp(escS, 'gi'), newS)
-    }
-
-    // ── Step 3: Inject scoped CSS overrides for gradient-span, slide-tag, uppercase ──
-    const scope = scopeId ? `#${scopeId} ` : ''
-    const override = `<style>
-      ${scope}.gradient-span {
-        background-image: linear-gradient(135deg, ${newP}, ${newS}) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        color: transparent !important;
-      }
-      ${scope}.slide-tag { color: ${newP} !important; }
-      ${scope}.title-font, ${scope}.slide-h[class*="uppercase"] { text-transform: uppercase !important; }
-      ${scope}svg[style*="color"] { color: ${newP} !important; }
-    </style>`
-    return override + result
+    // Find all <style> blocks and scope their CSS selectors to the target container (#scopeId)
+    const styleRegex = /<style([^>]*)>([\s\S]*?)<\/style>/gi
+    return html.replace(styleRegex, (match, attrs, cssContent) => {
+      const scopedCss = cssContent.replace(/([^{}]+)\s*({[^{}]*})/g, (ruleMatch: string, selector: string, body: string) => {
+        const trimmedSelector = selector.trim()
+        if (!trimmedSelector || trimmedSelector.startsWith('@') || trimmedSelector.startsWith('from') || trimmedSelector.startsWith('to') || trimmedSelector.match(/^\d+%/)) {
+          return ruleMatch
+        }
+        
+        const scopedSelector = trimmedSelector
+          .split(',')
+          .map((s: string) => {
+            const part = s.trim()
+            if (part.startsWith(':root') || part.startsWith('body') || part.startsWith('html')) {
+              return part
+            }
+            return `#${scopeId} ${part}`
+          })
+          .join(', ')
+          
+        return `\n${scopedSelector} ${body}\n`
+      })
+      return `<style${attrs}>${scopedCss}</style>`
+    })
   }
 
   if (loading) {

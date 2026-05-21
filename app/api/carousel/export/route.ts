@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
 import { createClient } from '@/utils/supabase/server'
 
+// Extend Vercel serverless function timeout to 60 seconds (Pro plan allows up to 60s)
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient()
@@ -15,6 +18,16 @@ export async function POST(req: Request) {
 
     if (!html) {
       return NextResponse.json({ error: 'HTML é obrigatório' }, { status: 400 })
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile || profile.plan === 'free') {
+      return NextResponse.json({ error: 'Exportacao PNG disponivel apenas em planos pagos.' }, { status: 403 })
     }
 
     const browserlessUrl = process.env.BROWSERLESS_URL
@@ -33,23 +46,30 @@ export async function POST(req: Request) {
 
     const page = await browser.newPage()
 
-    // KEY FIX: Render at preview CSS dimensions (360×450) with deviceScaleFactor:3
+    // Render at preview CSS dimensions (360×450) with deviceScaleFactor:3
     // → Puppeteer captures at 1080×1350 natively (360×3 = 1080, 450×3 = 1350)
-    // This eliminates ALL font-size/layout inconsistencies because the AI-generated HTML
-    // renders at the SAME CSS pixel dimensions as the in-app preview. Inline styles,
-    // font sizes, and Tailwind classes all behave identically to what the user sees.
     const SLIDE_W = 360  // CSS pixels — scales to 1080px at 3x
     const SLIDE_H = 450  // CSS pixels — scales to 1350px at 3x
-    const DPR = 3        // devicePixelRatio: 360 * 3 = 1080, 45    // Extract any <style> blocks from incoming html to inject them into the <head>
-    let extractedStyles = ''
-    let cleanedHtml = html
-    
-    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi
+    const DPR = 3        // devicePixelRatio
+
+    // ── Extract <link> tags (Google Fonts) from html_content ──────────────────
+    // The stored html_content starts with font <link> tags baked in at generation time.
+    // We pull them out and inject them into <head> where they belong.
+    const linkRegex = /<link[^>]*>/gi
+    const extractedLinks: string[] = []
     let match
-    while ((match = styleRegex.exec(html)) !== null) {
+    while ((match = linkRegex.exec(html)) !== null) {
+      extractedLinks.push(match[0])
+    }
+    let cleanedHtml = html.replace(linkRegex, '')
+
+    // ── Extract <style> blocks ────────────────────────────────────────────────
+    let extractedStyles = ''
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi
+    while ((match = styleRegex.exec(cleanedHtml)) !== null) {
       extractedStyles += match[1] + '\n'
     }
-    cleanedHtml = html.replace(styleRegex, '')
+    cleanedHtml = cleanedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
 
     await page.setViewport({ width: slideCount * SLIDE_W, height: SLIDE_H, deviceScaleFactor: DPR })
 
@@ -60,8 +80,8 @@ export async function POST(req: Request) {
           <meta charset="utf-8">
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=Share+Tech+Mono:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-          <!-- Tailwind CSS Play CDN: compiles all utility classes (w-5, h-5, rounded-2xl, inline-flex, grid, etc.) -->
+          ${extractedLinks.join('\n          ')}
+          <!-- Tailwind CSS Play CDN: compiles all utility classes -->
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             * { box-sizing: border-box; }
@@ -100,14 +120,25 @@ export async function POST(req: Request) {
       </html>
     `
 
-    // waitUntil 'networkidle0': waits for Tailwind CDN script and Google Fonts to fully load and have no more network activity
-    await page.setContent(fullHtml, { waitUntil: 'networkidle0' as any })
+    // ── FIX: Use domcontentloaded instead of networkidle0 ────────────────────
+    // networkidle0 waits for ALL network activity to stop for 500ms — on Vercel
+    // this frequently times out (30s) because Google Fonts CDN keeps connections alive.
+    // domcontentloaded is instant; we then wait for fonts separately with a safe timeout.
+    page.setDefaultNavigationTimeout(25000)
+    await page.setContent(fullHtml, { waitUntil: 'domcontentloaded', timeout: 25000 })
 
-    // Ensure all web fonts are fully downloaded and decoded
-    await page.evaluateHandle('document.fonts.ready')
+    // Wait for web fonts to load. Use a safe try/catch so a slow CDN doesn't fail the whole export.
+    try {
+      await Promise.race([
+        page.evaluateHandle('document.fonts.ready'),
+        new Promise(resolve => setTimeout(resolve, 8000)) // max 8s for fonts
+      ])
+    } catch (e) {
+      console.warn('Font loading check timed out, proceeding with screenshot...', e)
+    }
 
-    // Stabilization delay: lets Tailwind Play CDN parse the DOM and compile utility classes
-    await new Promise(resolve => setTimeout(resolve, 800))
+    // Small stabilization delay for Tailwind CDN to parse & apply utility classes
+    await new Promise(resolve => setTimeout(resolve, 1200))
 
     const uploadedUrls: string[] = []
 

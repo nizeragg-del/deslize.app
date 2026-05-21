@@ -251,7 +251,19 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         setHtmlContent(data.html)
         setCarouselId(data.carouselId)
         setCurrentSlide(0)
-        refreshProfile() // Update credits in UI after generation!
+        await refreshProfile() // Update credits in UI after generation.
+
+        try {
+          const bonusRes = await fetch('/api/onboarding/claim-bonus', {
+            method: 'POST'
+          })
+
+          if (bonusRes.ok) {
+            await refreshProfile()
+          }
+        } catch (bonusErr) {
+          console.error('Error claiming onboarding bonus after generation:', bonusErr)
+        }
       } else {
         alert(data.error || 'Erro ao gerar carrossel')
       }

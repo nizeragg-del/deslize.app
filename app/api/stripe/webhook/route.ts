@@ -22,6 +22,22 @@ export async function POST(req: Request) {
   )
 
   try {
+    const { error: eventInsertError } = await supabaseAdmin
+      .from('stripe_webhook_events')
+      .insert({
+        id: event.id,
+        event_type: event.type
+      })
+
+    if (eventInsertError) {
+      if (eventInsertError.code === '23505') {
+        return NextResponse.json({ received: true, duplicate: true })
+      }
+
+      console.error('Webhook idempotency insert failed:', eventInsertError)
+      return NextResponse.json({ error: 'Webhook idempotency failed' }, { status: 500 })
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as any

@@ -4,6 +4,11 @@ import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
+  let creditConsumed = false
+  let consumedTransactionId: string | null = null
+  let refundClient: any = null
+  let refundUserId: string | null = null
+
   try {
     const supabase = await createClient()
     
@@ -17,11 +22,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
+    refundUserId = user.id
+
     // Initialize admin client to bypass RLS for sensitive mutations
     const supabaseAdmin = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+    refundClient = supabaseAdmin
 
     // Parse the request body
     const body = await req.json()
@@ -195,38 +203,39 @@ export async function POST(req: Request) {
     `
 
 
-    // Verify credits
-    let { data: profile, error: profileError } = await supabase
+    const { error: profileInitError } = await supabaseAdmin
       .from('profiles')
-      .select('credits')
-      .eq('id', user.id)
-      .single()
+      .upsert({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Criador',
+        avatar_url: user.user_metadata?.avatar_url,
+        plan: 'free',
+        credits: 1
+      }, { onConflict: 'id', ignoreDuplicates: true })
 
-    if (profileError || !profile) {
-      const { data: newProfile } = await supabaseAdmin
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.name || user.email?.split('@')[0] || 'Criador',
-          avatar_url: user.user_metadata?.avatar_url,
-          plan: 'free',
-          credits: 1
-        })
-        .select('credits')
-        .single()
-      
-      if (newProfile) {
-        profile = newProfile
-      } else {
-        return NextResponse.json({ error: 'Erro ao inicializar perfil de usuário.' }, { status: 500 })
+    if (profileInitError) {
+      console.error('Error initializing profile:', profileInitError)
+      return NextResponse.json({ error: 'Erro ao inicializar perfil de usuario.' }, { status: 500 })
+    }
+
+    const { data: consumeRows, error: consumeError } = await supabaseAdmin
+      .rpc('consume_credit', {
+        p_user_id: user.id,
+        p_reason: 'carousel_generation'
+      })
+
+    if (consumeError) {
+      if ((consumeError.message || '').includes('insufficient_credits')) {
+        return NextResponse.json({ error: 'Creditos insuficientes. Adquira mais creditos para continuar.' }, { status: 403 })
       }
+
+      console.error('Error consuming credit:', consumeError)
+      return NextResponse.json({ error: 'Erro ao consumir credito.' }, { status: 500 })
     }
 
-    if (profile.credits < 1) {
-      return NextResponse.json({ error: 'Créditos insuficientes. Adquira mais créditos para continuar.' }, { status: 403 })
-    }
-
+    creditConsumed = true
+    consumedTransactionId = consumeRows?.[0]?.transaction_id ?? null
     // Construct the prompt
     const prompt = `
 Você é um designer de produto e copywriter especialista em Instagram de altíssimo nível.
@@ -357,29 +366,6 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
 
     const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${htmlContent}`
 
-    // Decrement user's credits by 1
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({ credits: Math.max(0, profile.credits - 1) })
-      .eq('id', user.id)
-
-    if (updateError) {
-      console.error('Error decrementing credits:', updateError)
-    }
-
-    // Log the transaction
-    const { error: txError } = await supabaseAdmin
-      .from('credit_transactions')
-      .insert({
-        user_id: user.id,
-        amount: -1,
-        reason: 'carousel_generation'
-      })
-
-    if (txError) {
-      console.error('Error logging credit transaction:', txError)
-    }
-
     // Save the carousel to public.carousels
     const { data: carousel, error: carouselInsertError } = await supabase
       .from('carousels')
@@ -398,6 +384,18 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
 
     if (carouselInsertError) {
       console.error('Error saving carousel to database:', carouselInsertError)
+      throw carouselInsertError
+    }
+
+    if (consumedTransactionId && carousel?.id) {
+      const { error: txUpdateError } = await supabaseAdmin
+        .from('credit_transactions')
+        .update({ carousel_id: carousel.id })
+        .eq('id', consumedTransactionId)
+
+      if (txUpdateError) {
+        console.error('Error linking credit transaction to carousel:', txUpdateError)
+      }
     }
 
     return NextResponse.json({ 
@@ -408,6 +406,19 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
 
   } catch (error: any) {
     console.error('Error generating carousel:', error)
+
+    if (creditConsumed && refundClient && refundUserId) {
+      const { error: refundError } = await refundClient
+        .rpc('refund_credit', {
+          p_user_id: refundUserId,
+          p_reason: 'carousel_generation_failed'
+        })
+
+      if (refundError) {
+        console.error('Error refunding failed carousel generation:', refundError)
+      }
+    }
+
     return NextResponse.json(
       { error: 'Erro ao gerar carrossel', details: error.message },
       { status: 500 }
