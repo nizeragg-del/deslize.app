@@ -249,8 +249,8 @@ FONTES E ESTILOS GLOBAIS ENVIADOS NO HEAD:
 ${fontHeaderImport}
 
 REGRAS DE CONTEXTO E FLUXO:
-1. O primeiro slide (Slide 1 - Hero/Hook) deve ter um impacto visual avassalador:
-   - Use um título monumental e de peso visual máximo. O tamanho do título é controlado pelo CSS da classe .slide-h — NÃO adicione font-size inline no elemento .slide-h (isso quebraria o export em alta resolução).
+1. O primeiro slide (Slide 1 - Hero/Hook) deve ser limpo e elegante:
+   - O título deve ser direto e usar APENAS a classe .slide-h. É ESTRITAMENTE PROIBIDO usar classes Tailwind de tamanho de fonte (ex: text-5xl, text-6xl, text-7xl, text-huge) no título ou em qualquer texto. Deixe o CSS padrão controlar o tamanho para evitar sobreposições que quebram o layout.
    - Envolva as palavras-chave mais impactantes em tags <span class="gradient-span"> para aplicar o gradiente brilhante da marca.
    - Use uma distribuição limpa, deixando espaço para o texto respirar e posicionando dois glows ambientais distantes (ex: um no topo esquerdo e um no canto inferior direito) para dar um efeito de iluminação volumétrica sofisticada de fundo.
    - NÃO use parágrafos longos ou genéricos de corpo no Slide 1; no máximo uma linha curta ou subtítulo elegante e direto de apoio (ex: "Descubra como em 3 passos rápidos.").
@@ -277,8 +277,12 @@ Para EVITAR isso, o PRIMEIRO elemento de conteúdo dentro do .ig-slide (logo ap�
 Este espaçador garante clearance mínimo entre o cabeçalho e o conteúdo, independente da altura total do slide.
 NUNCA deixe o título ou qualquer conteúdo visualmente sobrepor o .slide-logo ou .slide-tag.
 
-⚠️ TAMANHO DE FONTES — REGRA CRÍTICA ANTI-INCONSISTÊNCIA DE EXPORT:
-NUNCA adicione font-size inline no elemento .slide-h. O tamanho é definido pelo CSS. Se precisar de texto MENOR que o padrão, use classes Tailwind (ex: text-xl, text-2xl) em um div separado, nunca no .slide-h.
+⚠️ TAMANHO DE FONTES — REGRA CRÍTICA ANTI-SOBREPOSIÇÃO:
+É ABSOLUTAMENTE PROIBIDO o uso de classes utilitárias de tamanho de fonte do Tailwind (como text-4xl, text-5xl, text-6xl, text-7xl, text-8xl) em títulos ou textos de corpo. 
+O uso dessas classes faz com que o texto fique gigante e sobreponha o logotipo e o rodapé do slide. 
+NUNCA use font-size inline.
+Apenas aplique a classe ".slide-h" e deixe o CSS nativo definir o tamanho perfeito (32px).
+Se precisar de texto menor, use apenas text-sm ou text-xs.
 
 BIBLIOTECA DE ÍCONES (Use estes SVGs limpos no lugar de emojis ou marcadores genéricos):
 - Checkmark verde/marca: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
