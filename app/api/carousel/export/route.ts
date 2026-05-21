@@ -49,6 +49,9 @@ export async function POST(req: Request) {
       <html>
         <head>
           <meta charset="utf-8">
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=Share+Tech+Mono:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
           <!-- Tailwind CSS Play CDN: compiles all utility classes (w-5, h-5, rounded-2xl, inline-flex, grid, etc.) -->
           <script src="https://cdn.tailwindcss.com"><\/script>
           <style>
@@ -68,9 +71,9 @@ export async function POST(req: Request) {
             .slide-logo { position: absolute; top: 40px; right: 40px; display: flex; align-items: center; gap: 8px; }
             .slide-logo-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
             .slide-logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.5px; }
-            .slide-num-bg { position: absolute; bottom: 0; right: 0; font-size: 240px; font-weight: 800; color: rgba(255,255,255,0.03); line-height: 0.8; pointer-events: none; }
-            .slide-h { font-weight: 800; line-height: 1.1; margin-bottom: 16px; position: relative; z-index: 10; font-size: 32px; }
-            .slide-body { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 90%; position: relative; z-index: 10; }
+            .slide-num-bg { position: absolute; bottom: 0; right: 0; font-family: inherit; font-size: 240px; font-weight: 800; color: rgba(255,255,255,0.03); line-height: 0.8; pointer-events: none; }
+            .slide-h { font-family: inherit; font-weight: 800; line-height: 1.1; margin-bottom: 24px; position: relative; z-index: 10; font-size: 32px; }
+            .slide-body { font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 90%; position: relative; z-index: 10; }
             .slide-progress { position: absolute; bottom: 40px; left: 40px; right: 40px; display: flex; align-items: center; gap: 16px; }
             .progress-track { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
             .progress-fill { height: 100%; background: white; border-radius: 2px; }
@@ -85,11 +88,14 @@ export async function POST(req: Request) {
       </html>
     `
 
-    // waitUntil 'load': waits for Tailwind CDN script and Google Fonts to fully load
-    await page.setContent(fullHtml, { waitUntil: 'load' })
+    // waitUntil 'networkidle0': waits for Tailwind CDN script and Google Fonts to fully load and have no more network activity
+    await page.setContent(fullHtml, { waitUntil: 'networkidle0' as any })
+
+    // Ensure all web fonts are fully downloaded and decoded
+    await page.evaluateHandle('document.fonts.ready')
 
     // Stabilization delay: lets Tailwind Play CDN parse the DOM and compile utility classes
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise(resolve => setTimeout(resolve, 800))
 
     const uploadedUrls: string[] = []
 

@@ -173,7 +173,7 @@ export default function DashboardHome() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          html: carousel.html_content,
+          html: applyBrandColors(carousel.html_content),
           slideCount: carousel.slide_count || 7,
           carouselId: carousel.id
         })
