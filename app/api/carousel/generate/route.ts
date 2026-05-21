@@ -194,11 +194,78 @@ export async function POST(req: Request) {
     themeStyles += `
       .title-font { font-family: '${fontDisplay}', sans-serif !important; }
       .body-font { font-family: '${fontBody}', sans-serif !important; }
-      .ig-slide { background: ${bgColor} !important; }
+      .ig-slide {
+        width: 100% !important;
+        min-width: 100% !important;
+        height: 100% !important;
+        padding: 85px 40px !important;
+        background: ${bgColor} !important;
+        color: #F8FAFC !important;
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+      }
+      .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
+      .slide-tag {
+        position: absolute !important;
+        top: 40px !important;
+        left: 40px !important;
+        max-width: 160px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+        font-weight: 800 !important;
+        letter-spacing: 1.5px !important;
+        color: ${pColor} !important;
+        text-transform: none !important;
+        z-index: 20 !important;
+      }
+      .slide-logo {
+        position: absolute !important;
+        top: 40px !important;
+        right: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        max-width: 130px !important;
+        z-index: 20 !important;
+      }
+      .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
+      .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      .slide-h {
+        font-family: '${fontDisplay}', sans-serif !important;
+        font-size: 32px !important;
+        line-height: 1.08 !important;
+        font-weight: 800 !important;
+        letter-spacing: 0 !important;
+        margin: 0 0 22px !important;
+        text-align: center !important;
+        position: relative !important;
+        z-index: 10 !important;
+      }
+      .slide-body {
+        font-family: '${fontBody}', sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+        color: rgba(255,255,255,0.78) !important;
+        text-align: center !important;
+        margin: 0 auto !important;
+        max-width: 90% !important;
+        position: relative !important;
+        z-index: 10 !important;
+      }
+      .slide-num-bg { pointer-events: none !important; }
+      .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
       .gradient-span {
         background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
+      }
+      .glass-panel, .console-panel, .quote-box {
+        padding: 18px !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
       }
     `
 
@@ -258,18 +325,24 @@ FONTES E ESTILOS GLOBAIS ENVIADOS NO HEAD:
 ${fontHeaderImport}
 
 REGRAS DE CONTEXTO E FLUXO:
+0. CONSISTÊNCIA VISUAL OBRIGATÓRIA:
+   - Todos os slides devem seguir o mesmo sistema visual: tag no topo esquerdo, logo no topo direito, conteúdo centralizado e barra de progresso no rodapé.
+   - Não invente composições radicalmente diferentes, não crie layouts estreitos, não use mockups externos, não altere a proporção 4:5 e não use cards dentro do slide como estrutura principal.
+   - Use a identidade da marca enviada apenas neste momento de geração. Depois de salvo, este carrossel deve continuar com estas cores e fontes mesmo que o Brand Kit mude no futuro.
 1. O primeiro slide (Slide 1 - Hero/Hook) deve ser limpo e elegante:
    - O título deve ser direto e usar APENAS a classe .slide-h. É ESTRITAMENTE PROIBIDO usar classes Tailwind de tamanho de fonte (ex: text-5xl, text-6xl, text-7xl, text-huge) no título ou em qualquer texto. Deixe o CSS padrão controlar o tamanho para evitar sobreposições que quebram o layout.
    - Envolva as palavras-chave mais impactantes em tags <span class="gradient-span"> para aplicar o gradiente brilhante da marca.
    - Use uma distribuição limpa, deixando espaço para o texto respirar e posicionando dois glows ambientais distantes (ex: um no topo esquerdo e um no canto inferior direito) para dar um efeito de iluminação volumétrica sofisticada de fundo.
    - NÃO use parágrafos longos ou genéricos de corpo no Slide 1; no máximo uma linha curta ou subtítulo elegante e direto de apoio (ex: "Descubra como em 3 passos rápidos.").
 2. SLIDES CONCISOS (MUITO IMPORTANTE): A área útil vertical do carrossel é EXTREMAMENTE PEQUENA (360x450). Se você gerar parágrafos longos, muitos bullet points, ou empilhar vários elementos visuais no mesmo slide, o conteúdo VAZARÁ e será CORTADO no rodapé. Divida conteúdos maiores em múltiplos slides ao invés de encher um só. Mantenha no máximo 1 título curto + 2 frases de corpo por slide.
-3. Alterne o ritmo visual: crie layouts ligeiramente diferentes entre os slides (ex: slide 2 com lista, slide 3 com caixa de destaque centralizada, slide 4 com colunas antes/depois, slide 5 com métrica ou citação).
+3. Mantenha o mesmo padrão visual entre os slides. Pode variar o texto e pequenos blocos internos, mas preserve tipografia, espaçamento, header, rodapé e alinhamento central.
 4. O último slide DEVE conter um CTA marcante (ex: "Salve este post para ler depois" ou "Compartilhe com um amigo") acompanhado do logotipo da marca.
 
 REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
 - Retorne APENAS o código HTML cru das divs de slide. NÃO envolva em tags de bloco Markdown como \`\`\`html.
 - Cada slide deve ser uma div com a classe "ig-slide" consecutiva.
+- É proibido usar <style> adicional dentro dos slides. Use apenas as classes e componentes listados.
+- É proibido usar font-size inline, width inline, transform inline, scale inline, position fixed, position sticky, min-width personalizado ou classes de largura que alterem a proporção do slide.
 - Mantenha estritamente estas classes utilitárias no seu HTML para compatibilidade com o leitor:
   * Contêiner do slide: <div class="ig-slide">
   * Tag de topo: <div class="slide-tag">SUA TAG</div>
@@ -311,7 +384,7 @@ LAYOUTS EXEMPLARES PARA UTILIZAR NOS SLIDES DO MEIO:
   </div>
 - Exemplo de Métrica de Dados (Número Gigante):
   <div class="flex flex-col items-center justify-center my-4">
-    <div class="text-6xl font-extrabold title-font text-transparent bg-clip-text bg-gradient-to-r from-${pColor} to-${sColor}">+147%</div>
+    <div class="slide-h title-font"><span class="gradient-span">+147%</span></div>
     <div class="text-xs text-white/60 uppercase tracking-widest mt-1">Aumento de Engajamento</div>
   </div>
 - Exemplo de Grid Lado a Lado (Comparação):

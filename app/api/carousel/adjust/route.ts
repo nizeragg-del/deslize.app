@@ -178,11 +178,78 @@ export async function POST(req: Request) {
     themeStyles += `
       .title-font { font-family: '${fontDisplay}', sans-serif !important; }
       .body-font { font-family: '${fontBody}', sans-serif !important; }
-      .ig-slide { background: ${bgColor} !important; }
+      .ig-slide {
+        width: 100% !important;
+        min-width: 100% !important;
+        height: 100% !important;
+        padding: 85px 40px !important;
+        background: ${bgColor} !important;
+        color: #F8FAFC !important;
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+      }
+      .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
+      .slide-tag {
+        position: absolute !important;
+        top: 40px !important;
+        left: 40px !important;
+        max-width: 160px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+        font-weight: 800 !important;
+        letter-spacing: 1.5px !important;
+        color: ${pColor} !important;
+        text-transform: none !important;
+        z-index: 20 !important;
+      }
+      .slide-logo {
+        position: absolute !important;
+        top: 40px !important;
+        right: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        max-width: 130px !important;
+        z-index: 20 !important;
+      }
+      .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
+      .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      .slide-h {
+        font-family: '${fontDisplay}', sans-serif !important;
+        font-size: 32px !important;
+        line-height: 1.08 !important;
+        font-weight: 800 !important;
+        letter-spacing: 0 !important;
+        margin: 0 0 22px !important;
+        text-align: center !important;
+        position: relative !important;
+        z-index: 10 !important;
+      }
+      .slide-body {
+        font-family: '${fontBody}', sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+        color: rgba(255,255,255,0.78) !important;
+        text-align: center !important;
+        margin: 0 auto !important;
+        max-width: 90% !important;
+        position: relative !important;
+        z-index: 10 !important;
+      }
+      .slide-num-bg { pointer-events: none !important; }
+      .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
       .gradient-span {
         background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
+      }
+      .glass-panel, .console-panel, .quote-box {
+        padding: 18px !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
       }
     `
 
@@ -215,10 +282,12 @@ IDENTIDADE DA MARCA:
 - Cor Secundária: ${sColor}
 
 REGRAS E DIRETRIZES DE AJUSTE:
+0. Preserve o sistema visual do carrossel: tag no topo esquerdo, logo no topo direito, conteúdo centralizado e barra de progresso no rodapé. Não altere proporção, escala, largura, header, rodapé ou estilos globais.
 1. Retorne APENAS o código HTML cru e completo do carrossel (todas as divs com classe "ig-slide"). NÃO envolva em blocos Markdown como \`\`\`html.
 2. Se a instrução se referir a um slide específico (ex: "mude o título do slide 3" ou "coloque um ícone de alerta no slide 2"), faça a alteração cirurgicamente apenas naquele slide, preservando a coerência visual dos demais slides.
 3. Se a instrução for global (ex: "mude o tom de voz para mais descontraído"), aplique de forma homogênea a todos os slides.
 4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-h, .slide-body, .slide-num-bg).
+5. É proibido usar <style> adicional, font-size inline, width inline, transform inline, scale inline, position fixed, position sticky ou classes de largura que alterem a proporção do slide.
 5. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
   - Checkmark verde: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
   - Alerta/Erro: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>

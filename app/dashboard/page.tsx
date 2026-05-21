@@ -253,10 +253,22 @@ export default function DashboardHome() {
   const applyBrandColors = (html: string, scopeId?: string): string => {
     if (!html) return html
     if (!scopeId) return html
+    const scopedLock = `<style>
+      #${scopeId}.preview-track, #${scopeId}.preview-track-thumb { display: flex !important; height: 100% !important; width: 100% !important; }
+      #${scopeId} .ig-slide { width: 100% !important; min-width: 100% !important; height: 100% !important; padding: 85px 40px !important; position: relative !important; display: flex !important; flex-direction: column !important; justify-content: center !important; overflow: hidden !important; }
+      #${scopeId} .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
+      #${scopeId} .slide-tag { position: absolute !important; top: 40px !important; left: 40px !important; max-width: 160px !important; font-size: 11px !important; line-height: 1.2 !important; font-weight: 800 !important; letter-spacing: 1.5px !important; z-index: 20 !important; }
+      #${scopeId} .slide-logo { position: absolute !important; top: 40px !important; right: 40px !important; display: flex !important; align-items: center !important; gap: 8px !important; max-width: 130px !important; z-index: 20 !important; }
+      #${scopeId} .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
+      #${scopeId} .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      #${scopeId} .slide-h { font-size: 32px !important; line-height: 1.08 !important; font-weight: 800 !important; letter-spacing: 0 !important; margin: 0 0 22px !important; text-align: center !important; position: relative !important; z-index: 10 !important; }
+      #${scopeId} .slide-body { font-size: 16px !important; line-height: 1.55 !important; text-align: center !important; margin: 0 auto !important; max-width: 90% !important; position: relative !important; z-index: 10 !important; }
+      #${scopeId} .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
+    </style>`
 
     // Find all <style> blocks and scope their CSS selectors to the target container (#scopeId)
     const styleRegex = /<style([^>]*)>([\s\S]*?)<\/style>/gi
-    return html.replace(styleRegex, (match, attrs, cssContent) => {
+    const scopedHtml = html.replace(styleRegex, (match, attrs, cssContent) => {
       const scopedCss = cssContent.replace(/([^{}]+)\s*({[^{}]*})/g, (ruleMatch: string, selector: string, body: string) => {
         const trimmedSelector = selector.trim()
         if (!trimmedSelector || trimmedSelector.startsWith('@') || trimmedSelector.startsWith('from') || trimmedSelector.startsWith('to') || trimmedSelector.match(/^\d+%/)) {
@@ -268,7 +280,7 @@ export default function DashboardHome() {
           .map((s: string) => {
             const part = s.trim()
             if (part.startsWith(':root') || part.startsWith('body') || part.startsWith('html')) {
-              return part
+              return `#${scopeId}`
             }
             return `#${scopeId} ${part}`
           })
@@ -278,6 +290,7 @@ export default function DashboardHome() {
       })
       return `<style${attrs}>${scopedCss}</style>`
     })
+    return `${scopedHtml}${scopedLock}`
   }
 
   if (loading) {
@@ -537,7 +550,8 @@ export default function DashboardHome() {
                         .progress-fill { height: 100%; background: white; border-radius: 2px; }
                         .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); }
                       `}} />
-                      <div 
+                      <div
+                        id={`cc-${carousel.id}`}
                         className="preview-track-thumb"
                         dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content, `cc-${carousel.id}`), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                       ></div>

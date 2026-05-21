@@ -20,16 +20,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'HTML é obrigatório' }, { status: 400 })
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile || profile.plan === 'free') {
-      return NextResponse.json({ error: 'Exportacao PNG disponivel apenas em planos pagos.' }, { status: 403 })
-    }
-
     const browserlessUrl = process.env.BROWSERLESS_URL
 
     if (!browserlessUrl) {

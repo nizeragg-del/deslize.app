@@ -225,50 +225,50 @@ export default function CarouselHistoryPage() {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  // Re-apply current brand colors to stored HTML (which has old colors baked in)
-  // scopeId: when provided, scopes injected CSS overrides to avoid leakage between cards
+  // Scopes HTML styles dynamically based on the wrapper ID to avoid CSS leakage between grid cards.
+  // We bypass dynamic brand color overrides so that historic carousels perfectly lock their design
+  // with whatever Brand Kit was active at their exact generation time.
   const applyBrandColors = (html: string, scopeId?: string): string => {
-    if (!html || !brand?.primary_color) return html
-    const newP = brand.primary_color
-    const newS = brand.secondary_color || brand.primary_color
-
-    // ── Step 1: Extract the OLD primary color from the baked-in HTML ──────────
-    // Try slide-logo-dot inline style (most reliable anchor)
-    const dotMatch =
-      html.match(/class="slide-logo-dot"[^>]*style="background-color:\s*(#[0-9a-fA-F]{3,8})/i) ||
-      html.match(/style="background-color:\s*(#[0-9a-fA-F]{3,8})"[^>]*class="slide-logo-dot"/i)
-    const oldP = dotMatch ? dotMatch[1].toLowerCase() : null
-
-    // Try gradient for old secondary (first stop of a 135deg gradient)
-    const gradMatch = html.match(/linear-gradient\(135deg,\s*(#[0-9a-fA-F]{3,8})/i)
-    const oldS = gradMatch ? gradMatch[1].toLowerCase() : oldP
-
-    // ── Step 2: Global hex replacement (covers glows, borders, SVGs, panels) ─
-    let result = html
-    if (oldP && oldP !== newP.toLowerCase()) {
-      const escP = oldP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      result = result.replace(new RegExp(escP, 'gi'), newP)
-    }
-    if (oldS && oldS !== newS.toLowerCase() && oldS !== oldP) {
-      const escS = oldS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      result = result.replace(new RegExp(escS, 'gi'), newS)
-    }
-
-    // ── Step 3: Inject scoped CSS overrides for gradient-span, slide-tag, uppercase ──
-    const scope = scopeId ? `#${scopeId} ` : ''
-    const override = `<style>
-      ${scope}.gradient-span {
-        background-image: linear-gradient(135deg, ${newP}, ${newS}) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        color: transparent !important;
-      }
-      ${scope}.slide-tag { color: ${newP} !important; }
-      ${scope}.title-font, ${scope}.slide-h[class*="uppercase"] { text-transform: uppercase !important; }
-      ${scope}svg[style*="color"] { color: ${newP} !important; }
+    if (!html) return html
+    if (!scopeId) return html
+    const scopedLock = `<style>
+      #${scopeId}.preview-track, #${scopeId}.preview-track-thumb { display: flex !important; height: 100% !important; width: 100% !important; }
+      #${scopeId} .ig-slide { width: 100% !important; min-width: 100% !important; height: 100% !important; padding: 85px 40px !important; position: relative !important; display: flex !important; flex-direction: column !important; justify-content: center !important; overflow: hidden !important; }
+      #${scopeId} .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
+      #${scopeId} .slide-tag { position: absolute !important; top: 40px !important; left: 40px !important; max-width: 160px !important; font-size: 11px !important; line-height: 1.2 !important; font-weight: 800 !important; letter-spacing: 1.5px !important; z-index: 20 !important; }
+      #${scopeId} .slide-logo { position: absolute !important; top: 40px !important; right: 40px !important; display: flex !important; align-items: center !important; gap: 8px !important; max-width: 130px !important; z-index: 20 !important; }
+      #${scopeId} .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
+      #${scopeId} .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      #${scopeId} .slide-h { font-size: 32px !important; line-height: 1.08 !important; font-weight: 800 !important; letter-spacing: 0 !important; margin: 0 0 22px !important; text-align: center !important; position: relative !important; z-index: 10 !important; }
+      #${scopeId} .slide-body { font-size: 16px !important; line-height: 1.55 !important; text-align: center !important; margin: 0 auto !important; max-width: 90% !important; position: relative !important; z-index: 10 !important; }
+      #${scopeId} .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
     </style>`
-    return override + result
+
+    // Find all <style> blocks and scope their CSS selectors to the target container (#scopeId)
+    const styleRegex = /<style([^>]*)>([\s\S]*?)<\/style>/gi
+    const scopedHtml = html.replace(styleRegex, (match, attrs, cssContent) => {
+      const scopedCss = cssContent.replace(/([^{}]+)\s*({[^{}]*})/g, (ruleMatch: string, selector: string, body: string) => {
+        const trimmedSelector = selector.trim()
+        if (!trimmedSelector || trimmedSelector.startsWith('@') || trimmedSelector.startsWith('from') || trimmedSelector.startsWith('to') || trimmedSelector.match(/^\d+%/)) {
+          return ruleMatch
+        }
+        
+        const scopedSelector = trimmedSelector
+          .split(',')
+          .map((s: string) => {
+            const part = s.trim()
+            if (part.startsWith(':root') || part.startsWith('body') || part.startsWith('html')) {
+              return `#${scopeId}`
+            }
+            return `#${scopeId} ${part}`
+          })
+          .join(', ')
+          
+        return `\n${scopedSelector} ${body}\n`
+      })
+      return `<style${attrs}>${scopedCss}</style>`
+    })
+    return `${scopedHtml}${scopedLock}`
   }
 
   const filteredCarousels = carousels.filter(carousel => {
@@ -467,7 +467,8 @@ export default function CarouselHistoryPage() {
                             .progress-fill { height: 100%; background: white; border-radius: 2px; }
                             .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); }
                           `}} />
-                          <div 
+                          <div
+                            id={`cc-${carousel.id}`}
                             className="preview-track-thumb"
                             dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content, `cc-${carousel.id}`), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                           ></div>
