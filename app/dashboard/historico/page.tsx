@@ -14,6 +14,7 @@ export default function CarouselHistoryPage() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [exportLoading, setExportLoading] = useState(false)
   const supabase = createClient()
+  const [brand, setBrand] = useState<{ primary_color: string; secondary_color: string } | null>(null)
 
   // Folders & Favorites states
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all')
@@ -93,6 +94,17 @@ export default function CarouselHistoryPage() {
 
       if (data) {
         setCarousels(data)
+      }
+
+      // Fetch brand colors
+      const { data: brandsData } = await supabase
+        .from('brands')
+        .select('primary_color, secondary_color')
+        .eq('user_id', user.id)
+        .limit(1)
+
+      if (brandsData && brandsData.length > 0) {
+        setBrand(brandsData[0])
       }
     } catch (err) {
       console.error('Erro ao carregar carrosséis:', err)
@@ -211,6 +223,32 @@ export default function CarouselHistoryPage() {
     if (!dateString) return ''
     const d = new Date(dateString)
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
+  // Re-apply current brand colors to stored HTML (which has old colors baked in)
+  const applyBrandColors = (html: string): string => {
+    if (!html || !brand?.primary_color) return html
+    const p = brand.primary_color
+    const s = brand.secondary_color || brand.primary_color
+
+    // 1. Replace slide-logo-dot inline background-color (handles both attribute orders)
+    let result = html
+      .replace(/(<div[^>]*class="slide-logo-dot"[^>]*style=")background-color:[^;"]+/g, `$1background-color: ${p}`)
+      .replace(/(style="background-color:)[^"]+(")[^>]*class="slide-logo-dot"/g, `$1${p}$2 class="slide-logo-dot"`)
+
+    // 2. Inject a CSS override block to recolor gradient-span and slide-tag
+    const override = `<style>
+      .gradient-span {
+        background-image: linear-gradient(135deg, ${p}, ${s}) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        color: transparent !important;
+      }
+      .slide-tag { color: ${p} !important; }
+      svg[style*="color"] { color: ${p} !important; }
+    </style>`
+    return override + result
   }
 
   const filteredCarousels = carousels.filter(carousel => {
@@ -410,7 +448,7 @@ export default function CarouselHistoryPage() {
                           `}} />
                           <div 
                             className="preview-track-thumb"
-                            dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(carousel.html_content, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
+                            dangerouslySetInnerHTML={{ __html: carousel.html_content ? DOMPurify.sanitize(applyBrandColors(carousel.html_content), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                           ></div>
                         </div>
                       </div>
@@ -630,7 +668,7 @@ export default function CarouselHistoryPage() {
                         transform: `translateX(calc(-${currentSlide * 100}% + ${dragOffset}px))`,
                         transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1)"
                       }}
-                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(selectedCarousel.html_content, { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
+                      dangerouslySetInnerHTML={{ __html: selectedCarousel?.html_content ? DOMPurify.sanitize(applyBrandColors(selectedCarousel.html_content), { FORCE_BODY: true, ADD_TAGS: ['style', 'link'], ADD_ATTR: ['href', 'rel', 'type'] }) : '' }}
                     ></div>
                   </div>
 
