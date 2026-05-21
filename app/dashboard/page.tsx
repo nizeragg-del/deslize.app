@@ -6,6 +6,7 @@ import { Plus, Image as ImageIcon, Sparkles, Clock, Calendar, Eye, Download, Tra
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
+import { snapshotCarouselTrack } from '@/lib/carousel-export'
 
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true)
@@ -164,13 +165,17 @@ export default function DashboardHome() {
   const handleExport = async (carousel: any) => {
     setExportLoading(true)
     try {
+      const modalTrack = selectedCarousel?.id === carousel.id
+        ? viewportRef.current?.querySelector<HTMLElement>('.preview-track')
+        : null
+      const exportHtml = snapshotCarouselTrack(modalTrack ?? null) || applyBrandColors(carousel.html_content)
       const res = await fetch('/api/carousel/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          html: applyBrandColors(carousel.html_content),
+          html: exportHtml,
           slideCount: carousel.slide_count || 7,
           carouselId: carousel.id
         })

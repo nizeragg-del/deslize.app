@@ -5,6 +5,7 @@ import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw, Lock,
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
+import { snapshotCarouselTrack } from '@/lib/carousel-export'
 
 const TOTAL_SLIDES = 7
 
@@ -327,13 +328,14 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
 
     setLoading(true)
     try {
+      const exportHtml = snapshotCarouselTrack(viewportRef.current?.querySelector('.preview-track') ?? null) || htmlContent
       const res = await fetch('/api/carousel/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          html: htmlContent,
+          html: exportHtml,
           slideCount: 7,
           carouselId: carouselId || 'temp_id'
         })

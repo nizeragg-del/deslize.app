@@ -101,67 +101,6 @@ export async function POST(req: Request) {
           <style>
             ${extractedStyles}
           </style>
-          <style>
-            /* Final export lock: keep PNG output aligned with the in-app preview renderer. */
-            #track.preview-track { display: flex !important; width: ${slideCount * SLIDE_W}px !important; height: ${SLIDE_H}px !important; }
-            #track .ig-slide {
-              width: ${SLIDE_W}px !important;
-              min-width: ${SLIDE_W}px !important;
-              height: ${SLIDE_H}px !important;
-              padding: 85px 40px !important;
-              position: relative !important;
-              display: flex !important;
-              flex-direction: column !important;
-              justify-content: center !important;
-              overflow: hidden !important;
-              flex-shrink: 0 !important;
-            }
-            #track .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
-            #track .slide-tag {
-              position: absolute !important;
-              top: 40px !important;
-              left: 40px !important;
-              max-width: 160px !important;
-              font-size: 11px !important;
-              line-height: 1.2 !important;
-              font-weight: 800 !important;
-              letter-spacing: 1.5px !important;
-              z-index: 20 !important;
-            }
-            #track .slide-logo {
-              position: absolute !important;
-              top: 40px !important;
-              right: 40px !important;
-              display: flex !important;
-              align-items: center !important;
-              gap: 8px !important;
-              max-width: 130px !important;
-              z-index: 20 !important;
-            }
-            #track .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
-            #track .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-            #track .slide-h {
-              font-size: 32px !important;
-              line-height: 1.08 !important;
-              font-weight: 800 !important;
-              letter-spacing: 0 !important;
-              margin: 0 0 22px !important;
-              text-align: center !important;
-              position: relative !important;
-              z-index: 10 !important;
-            }
-            #track .slide-body {
-              font-size: 16px !important;
-              line-height: 1.55 !important;
-              text-align: center !important;
-              margin: 0 auto !important;
-              max-width: 90% !important;
-              position: relative !important;
-              z-index: 10 !important;
-            }
-            #track .slide-num-bg { pointer-events: none !important; }
-            #track .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
-          </style>
         </head>
         <body>
           <div class="preview-track" id="track">
