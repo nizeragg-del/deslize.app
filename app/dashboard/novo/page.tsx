@@ -486,9 +486,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         </div>
 
         <form onSubmit={handleGenerate} className="flex-1 flex flex-col gap-5">
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(320px,1.05fr)_minmax(260px,0.82fr)_minmax(260px,0.82fr)] gap-5 xl:gap-6">
-            <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-black/20 p-4 lg:col-span-2 xl:col-span-1 xl:row-span-2 flex flex-col min-h-[360px]">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-rose-500/70 via-rose-400/20 to-transparent"></div>
+          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-5 xl:gap-6">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 lg:col-span-2 xl:col-span-4 flex flex-col min-h-[230px]">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-white">
                   <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
@@ -510,17 +509,16 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 placeholder="Ex: 5 erros que fazem uma clínica perder pacientes no Instagram. Público: dentistas premium. Quero tom seguro, visual sofisticado e CTA para diagnóstico."
-                className="w-full flex-1 min-h-[320px] xl:min-h-0 bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none leading-relaxed"
+                className="w-full flex-1 min-h-[160px] bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none leading-relaxed"
                 required
               />
             </div>
             
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-black/20 p-4 flex flex-col">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/70 via-emerald-400/20 to-transparent"></div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col xl:order-1">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Layout className="w-4 h-4" /> Estrutura narrativa
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {formatOptions.map(f => (
                   <div 
                     key={f.value}
@@ -538,12 +536,11 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-cyan-400/25 bg-black/20 p-4 flex flex-col">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan-400/70 via-cyan-400/20 to-transparent"></div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col xl:order-3">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Type className="w-4 h-4" /> Tom de voz
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {toneOptions.map(t => (
                   <div 
                     key={t}
@@ -560,8 +557,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-black/20 p-4 flex flex-col">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-purple-400/70 via-purple-400/20 to-transparent"></div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col xl:order-2">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Brush className="w-4 h-4" /> Direção visual
               </label>
@@ -583,8 +579,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-black/20 p-4 flex flex-col justify-end">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-amber-400/70 via-amber-400/20 to-transparent"></div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col justify-end xl:order-4">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Palette className="w-4 h-4" /> Brand Kit
               </label>
