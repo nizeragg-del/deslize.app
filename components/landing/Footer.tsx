@@ -9,9 +9,9 @@ export function Footer() {
       </Link>
       <p>© 2026 Deslize. Feito com ✦ no Brasil.</p>
       <div className="footer-links">
-        <Link href="#">Termos</Link>
-        <Link href="#">Privacidade</Link>
-        <Link href="#">Contato</Link>
+        <Link href="/termos">Termos</Link>
+        <Link href="/privacidade">Privacidade</Link>
+        <Link href="/contato">Contato</Link>
       </div>
     </footer>
   );

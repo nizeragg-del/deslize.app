@@ -270,7 +270,30 @@ export async function POST(req: Request) {
         margin: 0 auto !important;
         max-width: 100% !important;
       }
+      .brand-ribbon { position: absolute !important; height: 18px !important; border-radius: 999px !important; background: linear-gradient(90deg, ${pColor}, ${sColor}) !important; opacity: 0.9 !important; z-index: 2 !important; }
+      .accent-arc { position: absolute !important; width: 210px !important; height: 210px !important; border: 22px solid ${pColor} !important; border-radius: 999px !important; opacity: 0.2 !important; z-index: 1 !important; }
+      .soft-grid { position: absolute !important; inset: 0 !important; background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px) !important; background-size: 42px 42px !important; mask-image: linear-gradient(to bottom, transparent, black 20%, black 75%, transparent) !important; opacity: 0.35 !important; z-index: 1 !important; }
+      .kicker-pill { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 7px 10px !important; border-radius: 999px !important; background: ${pColor}22 !important; border: 1px solid ${pColor}55 !important; color: #fff !important; font-size: 10px !important; line-height: 1 !important; font-weight: 800 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; position: relative !important; z-index: 10 !important; }
+      .stat-card, .insight-card { background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; padding: 14px !important; position: relative !important; z-index: 10 !important; }
+      .connector-line { height: 2px !important; background: linear-gradient(90deg, ${pColor}, transparent) !important; border-radius: 999px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
     `
+
+    themeRules += `
+
+DIREÇÃO CRIATIVA AUTORAL:
+- Antes de escrever o HTML, escolha mentalmente um território visual específico para esta marca e este tema. Não explique esse raciocínio no retorno.
+- O território deve nascer do nicho, público, promessa e tom do brief. Evite qualquer aparência de template genérico.
+- Use o ESTILO VISUAL SOLICITADO (${visualTheme}) como direção, não como prisão:
+  * Direção Autoral: crie um sistema próprio para a marca usando uma metáfora visual clara.
+  * Editorial Premium: use ritmo de revista, títulos sofisticados, respiro e detalhes finos.
+  * Social Mockup: use cards sobrepostos, barras, setas, mini componentes sociais e sensação de postagem real.
+  * SaaS Visual: use métricas, tabelas compactas, pílulas, painéis e blocos de produto.
+  * Manifesto Bold: use tipografia protagonista, frases curtas, contraste forte e poucos elementos.
+- Defina um motivo gráfico recorrente: arco, faixa, moldura editorial, linha conectora, bloco lateral, etiqueta, coordenada, índice, mini dashboard ou recorte geométrico.
+- Varie a composição dos slides sem quebrar o sistema: capa impactante, slide de tese, slide de prova, slide de passo, slide de contraste, slide de síntese e CTA.
+- Não repita a mesma caixa central em todos os slides. Use hierarquia editorial, assimetria controlada e elementos de apoio diferentes por função.
+- Não use emojis. Use texto, SVGs fornecidos e formas CSS simples.
+`
 
 
     const { error: profileInitError } = await supabaseAdmin
@@ -358,8 +381,9 @@ ${fontHeaderImport}
 
 REGRAS DE CONTEXTO E FLUXO:
 0. CONSISTÊNCIA VISUAL OBRIGATÓRIA:
-   - Todos os slides devem seguir o mesmo sistema visual: tag no topo esquerdo, logo no topo direito, conteúdo centralizado e barra de progresso no rodapé.
-   - Não invente composições radicalmente diferentes, não crie layouts estreitos, não use mockups externos, não altere a proporção 4:5 e não use cards dentro do slide como estrutura principal.
+   - Todos os slides devem seguir o mesmo sistema de marca: tag no topo esquerdo, logo no topo direito, barra de progresso no rodapé, paleta, fontes e motivo gráfico recorrente.
+   - Varie a composição interna conforme a função de cada slide. Pode usar alinhamento central, editorial assimétrico, blocos laterais, mini cards, linhas conectoras e números grandes.
+   - Não crie layouts estreitos, não use mockups externos, não altere a proporção 4:5 e não use uma caixa central repetida como solução padrão em todos os slides.
    - Use a identidade da marca enviada apenas neste momento de geração. Depois de salvo, este carrossel deve continuar com estas cores e fontes mesmo que o Brand Kit mude no futuro.
 1. O primeiro slide (Slide 1 - Hero/Hook) deve ser limpo e elegante:
    - O título deve ser direto e usar APENAS a classe .slide-h. É ESTRITAMENTE PROIBIDO usar classes Tailwind de tamanho de fonte (ex: text-5xl, text-6xl, text-7xl, text-huge) no título ou em qualquer texto. Deixe o CSS padrão controlar o tamanho para evitar sobreposições que quebram o layout.
@@ -382,6 +406,7 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
   * Título do slide: <div class="slide-h title-font">...</div>
   * Texto de corpo: <div class="slide-body body-font">...</div>
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
+  * Componentes profissionais opcionais: .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card, .connector-line
 
 ⚠️ ZONA DO CABEÇALHO — REGRA CRÍTICA ANTI-SOBREPOSIÇÃO:
 Os elementos .slide-tag e .slide-logo são posicionados ABSOLUTAMENTE no topo do slide (top: 40px).

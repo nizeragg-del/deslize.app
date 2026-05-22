@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw, Lock, Zap, CheckCircle2 } from 'lucide-react'
+import { Sparkles, ArrowRight, Layout, Type, Palette, Download, RefreshCw, Lock, Zap, CheckCircle2, MessageCircle, Send, Wand2, Target, Brush } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
@@ -9,13 +9,30 @@ import { snapshotCarouselTrack } from '@/lib/carousel-export'
 
 const TOTAL_SLIDES = 7
 
+const formatOptions = [
+  { value: 'Listicle', label: 'Lista', description: 'Ideias rápidas e escaneáveis' },
+  { value: 'Tutorial', label: 'Tutorial', description: 'Passo a passo claro' },
+  { value: 'Comparação', label: 'Comparação', description: 'Antes/depois, certo/errado' },
+  { value: 'Storytelling', label: 'História', description: 'Narrativa com virada' },
+]
+
+const toneOptions = ['Profissional', 'Educativo', 'Provocativo', 'Premium', 'Direto']
+
+const visualThemeOptions = [
+  { value: 'Direção Autoral', label: 'Autoral', description: 'Sistema visual único para a marca' },
+  { value: 'Editorial Premium', label: 'Editorial', description: 'Revista, luxo discreto, muito respiro' },
+  { value: 'Social Mockup', label: 'Mockup Social', description: 'Camadas, cards e sensação de Instagram' },
+  { value: 'SaaS Visual', label: 'SaaS', description: 'UI, métricas e blocos de produto' },
+  { value: 'Manifesto Bold', label: 'Manifesto', description: 'Tipografia grande e impacto' },
+]
+
 export default function NewCarouselPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [topic, setTopic] = useState('')
   const [format, setFormat] = useState('Listicle')
   const [tone, setTone] = useState('Educativo')
-  const [visualTheme, setVisualTheme] = useState('Mínimo Moderno')
+  const [visualTheme, setVisualTheme] = useState('Direção Autoral')
   const [htmlContent, setHtmlContent] = useState<string | null>(null)
   const [carouselId, setCarouselId] = useState<string | null>(null)
   const [renderedSlideUrls, setRenderedSlideUrls] = useState<string[]>([])
@@ -35,6 +52,11 @@ export default function NewCarouselPage() {
   const [hoveredDot, setHoveredDot] = useState<number | null>(null)
   const [isGridModalOpen, setIsGridModalOpen] = useState(false)
   const [copiedCaption, setCopiedCaption] = useState(false)
+  const [adjustInput, setAdjustInput] = useState('')
+  const [adjusting, setAdjusting] = useState(false)
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'assistant' | 'user', text: string }>>([
+    { role: 'assistant', text: 'Quando o carrossel ficar pronto, me peça ajustes como: deixe mais premium, mude o slide 3, reduza texto ou crie uma capa mais forte.' }
+  ])
   
   const startXRef = useRef(0)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -218,6 +240,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
     setLoading(true)
     setHtmlContent(null)
     setRenderedSlideUrls([])
+    setChatMessages([
+      { role: 'assistant', text: 'Estou criando uma direção visual própria para esta marca. Depois da geração, você pode pedir ajustes finos por aqui.' }
+    ])
 
     // Lookup active brand kit
     const activeBrand = brands.find(b => b.id === selectedBrandId)
@@ -280,9 +305,12 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
   }
 
   const handleAdjust = async (instruction: string) => {
-    if (!htmlContent || !instruction) return
+    const cleanInstruction = instruction.trim()
+    if (!htmlContent || !cleanInstruction || adjusting) return
 
-    setLoading(true)
+    setAdjusting(true)
+    setAdjustInput('')
+    setChatMessages(prev => [...prev, { role: 'user', text: cleanInstruction }])
     
     // Lookup active brand kit
     const activeBrand = brands.find(b => b.id === selectedBrandId)
@@ -293,7 +321,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentHtml: htmlContent,
-          instruction,
+          instruction: cleanInstruction,
           visualTheme,
           brand: activeBrand ? {
             name: activeBrand.name,
@@ -315,14 +343,17 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
       const data = await res.json()
       if (data.success) {
         setHtmlContent(data.html)
+        setRenderedSlideUrls([])
+        setChatMessages(prev => [...prev, { role: 'assistant', text: 'Ajustei o carrossel mantendo a identidade da marca. Revise o preview e me diga o próximo refinamento.' }])
       } else {
+        setChatMessages(prev => [...prev, { role: 'assistant', text: data.error || 'Não consegui aplicar esse ajuste agora.' }])
         alert(data.error || 'Erro ao ajustar carrossel')
       }
     } catch (err) {
       console.error(err)
       alert('Erro de conexão ao ajustar carrossel')
     } finally {
-      setLoading(false)
+      setAdjusting(false)
     }
   }
 
@@ -404,18 +435,23 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
   }
 
   return (
-    <div className="max-w-6xl mx-auto min-h-[calc(100vh-8rem)] h-auto lg:h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto min-h-[calc(100vh-8rem)] h-auto lg:h-[calc(100vh-8rem)] grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6 animate-in fade-in duration-500">
       
       {/* Editor Panel */}
-      <div className={`w-full lg:w-1/3 flex flex-col gap-6 h-auto lg:h-full pr-2 pb-8 relative ${
+      <div className={`w-full flex flex-col gap-5 h-auto lg:h-full pb-8 relative ${
         profile && profile.credits <= 0 && !profileLoading ? 'overflow-hidden' : 'overflow-visible lg:overflow-y-auto'
       }`}>
-        <div className="flex items-center justify-between gap-4">
+        <div className="relative overflow-hidden bg-[#090910] border border-white/10 rounded-2xl p-5">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--brand-primary)]/60 to-transparent"></div>
+          <div className="flex items-start justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-[var(--accent)] font-bold mb-3">
+              <Wand2 className="w-3.5 h-3.5" /> Studio de criação
+            </div>
             <h1 className="text-2xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-1">
-              Novo Carrossel
+              Novo carrossel
             </h1>
-            <p className="text-xs text-[var(--text-muted)]">Configure os detalhes e deixe a IA fazer a mágica.</p>
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed">Crie uma peça com direção visual própria, copy enxuta e sistema de marca aplicado.</p>
           </div>
           {profile && (
             <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-right shrink-0">
@@ -428,36 +464,40 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             </div>
           )}
         </div>
+        </div>
 
         <form onSubmit={handleGenerate} className="space-y-6">
           <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Tema do carrossel</label>
+              <label className="flex items-center gap-2 text-sm font-medium mb-2 text-white">
+                <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
+              </label>
               <textarea 
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
-                placeholder="Ex: 5 erros que impedem você de crescer no Instagram"
-                className="w-full bg-black/20 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none h-24"
+                placeholder="Ex: 5 erros que fazem uma clínica perder pacientes no Instagram. Público: dentistas premium. Quero tom seguro, visual sofisticado e CTA para diagnóstico."
+                className="w-full bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none h-32 leading-relaxed"
                 required
               />
             </div>
             
             <div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
-                <Layout className="w-4 h-4" /> Formato
+                <Layout className="w-4 h-4" /> Estrutura narrativa
               </label>
               <div className="grid grid-cols-2 gap-2">
-                {['Padrão', 'Listicle', 'Tutorial', 'Comparação'].map(f => (
+                {formatOptions.map(f => (
                   <div 
-                    key={f}
-                    onClick={() => setFormat(f)}
-                    className={`px-3 py-2 text-center text-sm rounded-lg cursor-pointer transition-colors border ${
-                      format === f 
+                    key={f.value}
+                    onClick={() => setFormat(f.value)}
+                    className={`p-3 text-left rounded-xl cursor-pointer transition-colors border ${
+                      format === f.value 
                         ? 'bg-[var(--brand-primary)]/20 border-[var(--brand-primary)] text-white' 
                         : 'bg-black/20 border-[var(--border-dark)] text-[var(--text-muted)] hover:border-white/30'
                     }`}
                   >
-                    {f}
+                    <div className="text-sm font-bold">{f.label}</div>
+                    <div className="text-[10px] leading-snug opacity-70 mt-1">{f.description}</div>
                   </div>
                 ))}
               </div>
@@ -468,7 +508,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 <Type className="w-4 h-4" /> Tom de voz
               </label>
               <div className="grid grid-cols-2 gap-2">
-                {['Profissional', 'Educativo', 'Motivacional', 'Urgente'].map(t => (
+                {toneOptions.map(t => (
                   <div 
                     key={t}
                     onClick={() => setTone(t)}
@@ -486,20 +526,21 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
 
             <div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
-                <Palette className="w-4 h-4" /> Estilo Visual
+                <Brush className="w-4 h-4" /> Direção visual
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {['Mínimo Moderno', 'Neon Tech', 'Editorial Elegante'].map(style => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {visualThemeOptions.map(style => (
                   <div 
-                    key={style}
-                    onClick={() => setVisualTheme(style)}
-                    className={`px-2 py-2 text-center text-[10px] rounded-lg cursor-pointer transition-colors border leading-tight flex items-center justify-center min-h-[38px] ${
-                      visualTheme === style 
+                    key={style.value}
+                    onClick={() => setVisualTheme(style.value)}
+                    className={`p-3 text-left rounded-xl cursor-pointer transition-colors border min-h-[74px] ${
+                      visualTheme === style.value 
                         ? 'bg-[var(--brand-primary)]/20 border-[var(--brand-primary)] text-white font-semibold' 
                         : 'bg-[#00000033] border-[var(--border-dark)] text-[var(--text-muted)] hover:border-white/30'
                     }`}
                   >
-                    {style}
+                    <div className="text-sm font-bold">{style.label}</div>
+                    <div className="text-[10px] leading-snug opacity-70 mt-1">{style.description}</div>
                   </div>
                 ))}
               </div>
@@ -539,9 +580,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             className="w-full btn-primary py-4 flex items-center justify-center gap-2 disabled:opacity-70"
           >
             {loading ? (
-              <><RefreshCw className="w-5 h-5 animate-spin" /> Gerando carrossel...</>
+              <><RefreshCw className="w-5 h-5 animate-spin" /> Criando direção visual...</>
             ) : (
-              <><Sparkles className="w-5 h-5" /> Gerar com IA</>
+              <><Sparkles className="w-5 h-5" /> Gerar carrossel autoral</>
             )}
           </button>
         </form>
@@ -571,7 +612,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         {/* Action Panel for adjustments (only visible when generated) */}
         {htmlContent && (
           <>
-            <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 mt-4">
+            <div className="hidden">
               <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--accent)]" /> Ajuste por IA
               </h3>
@@ -615,7 +656,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
       </div>
 
       {/* Preview Panel */}
-      <div className="w-full lg:w-2/3 min-h-[600px] lg:h-full lg:min-h-0 flex flex-col">
+      <div className="w-full min-h-[760px] lg:h-full lg:min-h-0 flex flex-col gap-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
@@ -643,7 +684,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
           )}
         </div>
 
-        <div className="flex-1 bg-[#050508] border border-[var(--border-dark)] rounded-3xl relative flex items-center justify-center overflow-hidden">
+        <div className="flex-1 bg-[#050508] border border-[var(--border-dark)] rounded-3xl relative flex items-center justify-center overflow-hidden min-h-[560px]">
           {/* subtle background noise */}
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise-pattern-with-subtle-cross-lines.png')] opacity-10 pointer-events-none"></div>
           
@@ -861,6 +902,75 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
           )}
+        </div>
+
+        <div className={`bg-[#090910] border border-white/10 rounded-2xl overflow-hidden transition-opacity ${htmlContent ? 'opacity-100' : 'opacity-70'}`}>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[var(--brand-primary)]/15 border border-[var(--brand-primary)]/25 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-[var(--accent)]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Chat de refinamento</h3>
+                <p className="text-[11px] text-[var(--text-muted)]">Ajuste copy, direção visual, tom ou slides específicos.</p>
+              </div>
+            </div>
+            {adjusting && (
+              <div className="flex items-center gap-2 text-[11px] text-[var(--accent)]">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> ajustando
+              </div>
+            )}
+          </div>
+          <div className="h-44 overflow-y-auto px-4 py-3 space-y-3 bg-black/15">
+            {chatMessages.map((message, index) => (
+              <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+                  message.role === 'user'
+                    ? 'bg-[var(--brand-primary)] text-white'
+                    : 'bg-white/[0.07] border border-white/10 text-[var(--text-muted)]'
+                }`}>
+                  {message.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 border-t border-white/10">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={adjustInput}
+                onChange={(e) => setAdjustInput(e.target.value)}
+                disabled={!htmlContent || adjusting}
+                placeholder={htmlContent ? 'Ex: deixe a capa mais premium e reduza o texto do slide 4' : 'Gere um carrossel para liberar o chat de ajustes'}
+                className="flex-1 min-w-0 bg-black/30 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] disabled:opacity-50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAdjust(adjustInput)
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleAdjust(adjustInput)}
+                disabled={!htmlContent || !adjustInput.trim() || adjusting}
+                className="w-12 h-12 rounded-xl bg-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/85 disabled:opacity-50 disabled:hover:bg-[var(--brand-primary)] text-white flex items-center justify-center transition-colors"
+                aria-label="Enviar ajuste"
+              >
+                {adjusting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+              {['Deixe mais premium', 'Menos texto nos slides', 'Capa com mais impacto'].map(suggestion => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  disabled={!htmlContent || adjusting}
+                  onClick={() => handleAdjust(suggestion)}
+                  className="text-[11px] text-[var(--text-muted)] hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 transition-colors disabled:opacity-40"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

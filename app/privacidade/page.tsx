@@ -140,6 +140,7 @@ export default function PrivacidadePage() {
           <div className="flex gap-6">
             <Link href="/privacidade" className="hover:text-white transition-colors">Política de Privacidade</Link>
             <Link href="/termos" className="hover:text-white transition-colors">Termos de Uso</Link>
+            <Link href="/contato" className="hover:text-white transition-colors">Contato</Link>
           </div>
         </div>
       </footer>

@@ -251,6 +251,12 @@ export async function POST(req: Request) {
         margin: 0 auto !important;
         max-width: 100% !important;
       }
+      .brand-ribbon { position: absolute !important; height: 18px !important; border-radius: 999px !important; background: linear-gradient(90deg, ${pColor}, ${sColor}) !important; opacity: 0.9 !important; z-index: 2 !important; }
+      .accent-arc { position: absolute !important; width: 210px !important; height: 210px !important; border: 22px solid ${pColor} !important; border-radius: 999px !important; opacity: 0.2 !important; z-index: 1 !important; }
+      .soft-grid { position: absolute !important; inset: 0 !important; background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px) !important; background-size: 42px 42px !important; mask-image: linear-gradient(to bottom, transparent, black 20%, black 75%, transparent) !important; opacity: 0.35 !important; z-index: 1 !important; }
+      .kicker-pill { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 7px 10px !important; border-radius: 999px !important; background: ${pColor}22 !important; border: 1px solid ${pColor}55 !important; color: #fff !important; font-size: 10px !important; line-height: 1 !important; font-weight: 800 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; position: relative !important; z-index: 10 !important; }
+      .stat-card, .insight-card { background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; padding: 14px !important; position: relative !important; z-index: 10 !important; }
+      .connector-line { height: 2px !important; background: linear-gradient(90deg, ${pColor}, transparent) !important; border-radius: 999px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
     `
 
     let cleanedHtml = currentHtml
@@ -282,11 +288,11 @@ IDENTIDADE DA MARCA:
 - Cor Secundária: ${sColor}
 
 REGRAS E DIRETRIZES DE AJUSTE:
-0. Preserve o sistema visual do carrossel: tag no topo esquerdo, logo no topo direito, conteúdo centralizado e barra de progresso no rodapé. Não altere proporção, escala, largura, header, rodapé ou estilos globais.
+0. Preserve o sistema de marca do carrossel: tag no topo esquerdo, logo no topo direito, barra de progresso no rodapé, paleta, fontes e motivo gráfico recorrente. Pode variar a composição interna se o usuário pedir mais impacto, mais premium ou menos texto. Não altere proporção, escala, largura, header, rodapé ou estilos globais.
 1. Retorne APENAS o código HTML cru e completo do carrossel (todas as divs com classe "ig-slide"). NÃO envolva em blocos Markdown como \`\`\`html.
 2. Se a instrução se referir a um slide específico (ex: "mude o título do slide 3" ou "coloque um ícone de alerta no slide 2"), faça a alteração cirurgicamente apenas naquele slide, preservando a coerência visual dos demais slides.
 3. Se a instrução for global (ex: "mude o tom de voz para mais descontraído"), aplique de forma homogênea a todos os slides.
-4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-h, .slide-body, .slide-num-bg).
+4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-h, .slide-body, .slide-num-bg). Pode usar também .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card e .connector-line.
 5. É proibido usar <style> adicional, font-size inline, width inline, transform inline, scale inline, position fixed, position sticky ou classes de largura que alterem a proporção do slide.
 5. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
   - Checkmark verde: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
