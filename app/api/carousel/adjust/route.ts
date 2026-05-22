@@ -29,6 +29,13 @@ export async function POST(req: Request) {
     const bgColor = brand?.bgColor || '#0A0A0F'
     const fontDisplay = brand?.fontDisplay || 'Outfit'
     const fontBody = brand?.fontBody || 'Inter'
+    const logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
+    const brandName = brand?.name || 'suamarca'
+    const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const logoMarkup = safeLogoUrl
+      ? `<div class="slide-logo"><img class="slide-logo-img" src="${safeLogoUrl}" alt="${safeBrandName}"></div>`
+      : `<div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${safeBrandName}</span></div>`
 
     // Dynamically load all fonts required: user's custom brand fonts + theme specific fallback fonts
     const fontsSet = new Set<string>()
@@ -217,6 +224,7 @@ export async function POST(req: Request) {
       }
       .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
       .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      .slide-logo-img { display: block !important; width: auto !important; height: 24px !important; max-width: 96px !important; object-fit: contain !important; object-position: center !important; }
       .slide-h {
         font-family: '${fontDisplay}', sans-serif !important;
         font-size: 28px !important;
@@ -306,21 +314,23 @@ ESTILO VISUAL: ${visualTheme}
 ${themeRules}
 
 IDENTIDADE DA MARCA:
-- Nome/Handle: ${brand?.name || 'suamarca'}
+- Nome/Handle: ${brandName}
 - Cor Primária: ${pColor}
 - Cor Secundária: ${sColor}
+- Logo: ${logoUrl ? `usar a imagem ${logoUrl}` : 'sem logo enviada; usar bolinha colorida + nome'}
 
 REGRAS E DIRETRIZES DE AJUSTE:
 0. Preserve o sistema de marca do carrossel: tag no topo esquerdo, logo no topo direito, barra de progresso no rodapé, paleta, fontes e motivo gráfico recorrente. Pode variar a composição interna se o usuário pedir mais impacto, mais premium ou menos texto. Não altere proporção, escala, largura, header, rodapé ou estilos globais.
 1. Retorne APENAS o código HTML cru e completo do carrossel (todas as divs com classe "ig-slide"). NÃO envolva em blocos Markdown como \`\`\`html.
 2. Se a instrução se referir a um slide específico (ex: "mude o título do slide 3" ou "coloque um ícone de alerta no slide 2"), faça a alteração cirurgicamente apenas naquele slide, preservando a coerência visual dos demais slides.
 3. Se a instrução for global (ex: "mude o tom de voz para mais descontraído"), aplique de forma homogênea a todos os slides.
-4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-h, .slide-body, .slide-num-bg). Pode usar também .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card e .connector-line.
+4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-logo-img, .slide-h, .slide-body, .slide-num-bg). Pode usar também .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card e .connector-line.
 5. É proibido usar <style> adicional, font-size inline, width inline, transform inline, scale inline, position fixed, position sticky ou classes de largura que alterem a proporção do slide.
 6. Todo conteúdo principal deve ficar dentro de <div class="slide-content">. Se o HTML atual tiver .slide-h, .slide-body, .insight-card, .stat-card, .kicker-pill ou CTA soltos fora dessa área, reorganize para dentro dela.
 7. Evite bagunça vertical: no máximo 3 filhos diretos dentro de .slide-content; máximo 1 card/painel por slide; corpo com até 16 palavras; card com 1 título curto + 1 frase curta. Não use my-6, my-8, mt-8, mb-8, py-6 ou py-8.
 8. Use composição "landing editorial" como padrão: tag e logo bem no topo, conteúdo amplo alinhado à esquerda, poucas linhas e muito espaço negativo. Evite títulos centralizados espremidos. Não insira <br> manual dentro de .slide-h; encurte o texto quando passar de 3 linhas.
-9. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
+9. Logo obrigatória para este ajuste: ${logoMarkup}. Se houver logo enviada, substitua bolinha + nome por essa imagem e NÃO use .slide-logo-dot nem .slide-logo-text. Se não houver logo enviada, use o fallback bolinha + nome.
+10. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
   - Checkmark verde: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
   - Alerta/Erro: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
   - Dica/Lâmpada: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .5 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>

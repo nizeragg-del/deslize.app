@@ -60,6 +60,7 @@ export default function NewCarouselPage() {
   
   const startXRef = useRef(0)
   const viewportRef = useRef<HTMLDivElement>(null)
+  const previewSectionRef = useRef<HTMLDivElement>(null)
   const viewportWidthRef = useRef(0)
 
   const refreshProfile = async () => {
@@ -240,6 +241,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
     setLoading(true)
     setHtmlContent(null)
     setRenderedSlideUrls([])
+    setTimeout(() => {
+      previewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
     setChatMessages([
       { role: 'assistant', text: 'Estou criando uma direção visual própria para esta marca. Depois da geração, você pode pedir ajustes finos por aqui.' }
     ])
@@ -265,7 +269,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             fontDisplay: activeBrand.font_display,
             fontBody: activeBrand.font_body,
             tagline: activeBrand.tagline,
-            tone: activeBrand.tone
+            tone: activeBrand.tone,
+            logoUrl: activeBrand.logo_url
           } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
@@ -280,6 +285,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         setCarouselId(data.carouselId)
         setRenderedSlideUrls(Array.isArray(data.slideUrls) ? data.slideUrls : [])
         setCurrentSlide(0)
+        setTimeout(() => {
+          previewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 150)
         await refreshProfile() // Update credits in UI after generation.
 
         try {
@@ -331,7 +339,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             fontDisplay: activeBrand.font_display,
             fontBody: activeBrand.font_body,
             tagline: activeBrand.tagline,
-            tone: activeBrand.tone
+            tone: activeBrand.tone,
+            logoUrl: activeBrand.logo_url
           } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
@@ -435,11 +444,11 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
   }
 
   return (
-    <div className="max-w-7xl mx-auto min-h-[calc(100vh-8rem)] h-auto lg:h-[calc(100vh-8rem)] grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6 animate-in fade-in duration-500">
+    <div className="w-full min-h-[calc(100vh-8rem)] flex flex-col gap-10 animate-in fade-in duration-500">
       
       {/* Editor Panel */}
-      <div className={`w-full flex flex-col gap-5 h-auto lg:h-full pb-8 relative ${
-        profile && profile.credits <= 0 && !profileLoading ? 'overflow-hidden' : 'overflow-visible lg:overflow-y-auto'
+      <section className={`w-full min-h-[calc(100vh-6rem)] flex flex-col gap-5 relative ${
+        profile && profile.credits <= 0 && !profileLoading ? 'overflow-hidden' : 'overflow-visible'
       }`}>
         <div className="relative overflow-hidden bg-[#090910] border border-white/10 rounded-2xl p-5">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--brand-primary)]/60 to-transparent"></div>
@@ -466,9 +475,9 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         </div>
         </div>
 
-        <form onSubmit={handleGenerate} className="space-y-6">
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 space-y-5">
-            <div>
+        <form onSubmit={handleGenerate} className="flex-1 flex flex-col gap-5">
+          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] gap-6">
+            <div className="flex flex-col">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-white">
                 <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
               </label>
@@ -476,12 +485,13 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 placeholder="Ex: 5 erros que fazem uma clínica perder pacientes no Instagram. Público: dentistas premium. Quero tom seguro, visual sofisticado e CTA para diagnóstico."
-                className="w-full bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none h-32 leading-relaxed"
+                className="w-full flex-1 min-h-[260px] xl:min-h-0 bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none leading-relaxed"
                 required
               />
             </div>
             
-            <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 content-start">
+            <div className="md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Layout className="w-4 h-4" /> Estrutura narrativa
               </label>
@@ -503,7 +513,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Type className="w-4 h-4" /> Tom de voz
               </label>
@@ -524,7 +534,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Brush className="w-4 h-4" /> Direção visual
               </label>
@@ -546,7 +556,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Palette className="w-4 h-4" /> Brand Kit
               </label>
@@ -572,6 +582,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 )}
               </select>
             </div>
+            </div>
           </div>
 
           <button 
@@ -582,7 +593,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             {loading ? (
               <><RefreshCw className="w-5 h-5 animate-spin" /> Criando direção visual...</>
             ) : (
-              <><Sparkles className="w-5 h-5" /> Gerar carrossel autoral</>
+              <><Sparkles className="w-5 h-5" /> Gerar carrossel</>
             )}
           </button>
         </form>
@@ -634,7 +645,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-5 mt-4 relative overflow-hidden">
+            <div className="hidden bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-5 mt-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand-primary)]/10 rounded-full blur-3xl pointer-events-none"></div>
               <h3 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
                 <Type className="w-4 h-4 text-[var(--brand-primary)]" /> Legenda Sugerida
@@ -653,10 +664,10 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             </div>
           </>
         )}
-      </div>
+      </section>
 
       {/* Preview Panel */}
-      <div className="w-full min-h-[760px] lg:h-full lg:min-h-0 flex flex-col gap-4">
+      <section ref={previewSectionRef} className="w-full min-h-[calc(100vh-6rem)] flex flex-col gap-5 scroll-mt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
@@ -684,7 +695,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
           )}
         </div>
 
-        <div className="flex-1 bg-[#050508] border border-[var(--border-dark)] rounded-3xl relative flex items-center justify-center overflow-hidden min-h-[560px]">
+        <div className="flex-1 bg-[#050508] border border-[var(--border-dark)] rounded-3xl relative flex items-center justify-center overflow-hidden min-h-[520px]">
           {/* subtle background noise */}
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise-pattern-with-subtle-cross-lines.png')] opacity-10 pointer-events-none"></div>
           
@@ -753,7 +764,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
           {(htmlContent || renderedSlideUrls.length > 0) && !loading && (
             <div className="w-full h-full p-4 md:p-8 flex items-center justify-center relative z-10 overflow-hidden">
               {/* Instagram Frame */}
-              <div className="w-full max-w-[360px] bg-surface-dark rounded-xl overflow-hidden relative shadow-2xl border border-white/10 flex flex-col">
+              <div className="w-full max-w-[430px] bg-surface-dark rounded-xl overflow-hidden relative shadow-2xl border border-white/10 flex flex-col">
                 {/* Header mock */}
                 <div className="flex items-center gap-3 p-3 border-b border-white/10 shrink-0 bg-surface-dark">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
@@ -817,6 +828,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                       .slide-logo { position: absolute; top: 40px; right: 40px; display: flex; items-center; gap: 8px; }
                       .slide-logo-dot { width: 16px; height: 16px; border-radius: 50%; }
                       .slide-logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.5px; }
+                      .slide-logo-img { display: block; width: auto; height: 24px; max-width: 96px; object-fit: contain; object-position: center; }
                       .slide-num-bg { position: absolute; bottom: 0; right: 0; font-family: inherit; font-size: 240px; font-weight: 800; color: rgba(255,255,255,0.03); line-height: 0.8; }
                       .slide-h { font-family: inherit; font-weight: 800; line-height: 1.1; margin-bottom: 24px; position: relative; z-index: 10; font-size: 32px;}
                       .slide-body { font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.6; max-width: 90%; position: relative; z-index: 10; }
@@ -921,7 +933,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             )}
           </div>
-          <div className="h-44 overflow-y-auto px-4 py-3 space-y-3 bg-black/15">
+          <div className="h-52 overflow-y-auto px-4 py-3 space-y-3 bg-black/15">
             {chatMessages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
@@ -972,7 +984,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Upsell 1 Premium Export Modal */}
       {isUpsellModalOpen && (

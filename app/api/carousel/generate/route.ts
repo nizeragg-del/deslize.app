@@ -48,6 +48,13 @@ export async function POST(req: Request) {
     const bgColor = brand?.bgColor || '#0A0A0F'
     const fontDisplay = brand?.fontDisplay || 'Outfit'
     const fontBody = brand?.fontBody || 'Inter'
+    const logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
+    const brandName = brand?.name || 'suamarca'
+    const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const logoMarkup = safeLogoUrl
+      ? `<div class="slide-logo"><img class="slide-logo-img" src="${safeLogoUrl}" alt="${safeBrandName}"></div>`
+      : `<div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${safeBrandName}</span></div>`
 
     // Dynamically load all fonts required: user's custom brand fonts + theme specific fallback fonts
     const fontsSet = new Set<string>()
@@ -236,6 +243,7 @@ export async function POST(req: Request) {
       }
       .slide-logo-dot { width: 16px !important; height: 16px !important; border-radius: 999px !important; flex-shrink: 0 !important; }
       .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+      .slide-logo-img { display: block !important; width: auto !important; height: 24px !important; max-width: 96px !important; object-fit: contain !important; object-position: center !important; }
       .slide-h {
         font-family: '${fontDisplay}', sans-serif !important;
         font-size: 28px !important;
@@ -395,9 +403,10 @@ NÚMERO DE SLIDES: ${slideCount}
 ESTILO VISUAL SOLICITADO: ${visualTheme}
 
 IDENTIDADE DA MARCA:
-- Nome/Handle: ${brand?.name || 'suamarca'}
+- Nome/Handle: ${brandName}
 - Cor Primária (Destaques e Acentos): ${pColor}
 - Cor Secundária: ${sColor}
+- Logo: ${logoUrl ? `usar a imagem ${logoUrl}` : 'sem logo enviada; usar bolinha colorida + nome'}
 
 ${themeRules}
 
@@ -430,10 +439,11 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
 - É proibido usar <style> adicional dentro dos slides. Use apenas as classes e componentes listados.
 - É proibido usar font-size inline, width inline, transform inline, scale inline, position fixed, position sticky, min-width personalizado ou classes de largura que alterem a proporção do slide.
 - Evite inserir <br> manual dentro de .slide-h. Deixe o CSS quebrar o texto naturalmente. Use <span class="gradient-span"> apenas em 1 a 3 palavras.
+- Se houver logo enviada, use exatamente o HTML de logo informado e NÃO use .slide-logo-dot nem .slide-logo-text. Se não houver logo, use bolinha colorida + nome.
 - Mantenha estritamente estas classes utilitárias no seu HTML para compatibilidade com o leitor:
   * Contêiner do slide: <div class="ig-slide">
   * Tag de topo: <div class="slide-tag">SUA TAG</div>
-  * Logo da marca: <div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${brand?.name || 'suamarca'}</span></div>
+  * Logo da marca: ${logoMarkup}
   * Título do slide: <div class="slide-h title-font">...</div>
   * Texto de corpo: <div class="slide-body body-font">...</div>
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
@@ -443,7 +453,7 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
 ESTRUTURA OBRIGATÓRIA DE CADA SLIDE:
 <div class="ig-slide">
   <div class="slide-tag">...</div>
-  <div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${brand?.name || 'suamarca'}</span></div>
+  ${logoMarkup}
   <div class="slide-content">
     ...somente o conteúdo principal do slide...
   </div>

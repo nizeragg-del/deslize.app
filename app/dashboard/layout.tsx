@@ -188,7 +188,7 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
-        <div className="max-w-6xl mx-auto h-full">
+        <div className={`${pathname === '/dashboard/novo' ? 'w-full' : 'max-w-6xl mx-auto'} h-full`}>
           {children}
         </div>
       </main>

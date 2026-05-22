@@ -521,7 +521,7 @@ export default function BrandKitPage() {
                     <div className="w-14 h-14 shrink-0 rounded-full bg-gradient-to-tr from-[var(--brand-primary)] to-[var(--accent)] p-[1px] flex items-center justify-center">
                       <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
                         {brandForm.logoUrl ? (
-                          <img src={brandForm.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          <img src={brandForm.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
                         ) : (
                           <span className="text-white font-extrabold text-lg">
                             {brandForm.name ? brandForm.name.substring(0, 2).toUpperCase() : 'SM'}
@@ -539,13 +539,13 @@ export default function BrandKitPage() {
                         )}
                       </div>
                       <div className="text-[10px] text-[var(--text-muted2)] leading-relaxed">
-                        PNG transparente ou SVG recomendado. Limite de 2MB. O arquivo será salvo com segurança.
+                        Use uma logo em PNG ou SVG com fundo transparente. Evite JPG ou imagens com fundo branco/colorido. Limite de 2MB.
                       </div>
                     </div>
 
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/svg+xml,image/webp"
                       onChange={handleLogoUpload}
                       disabled={uploadingLogo}
                       className="absolute inset-0 opacity-0 cursor-pointer"
@@ -800,3 +800,4 @@ export default function BrandKitPage() {
     </div>
   )
 }
+
