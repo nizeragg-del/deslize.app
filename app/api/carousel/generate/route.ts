@@ -36,7 +36,20 @@ export async function POST(req: Request) {
 
     // Parse the request body
     const body = await req.json()
-    const { topic, format = 'standard', tone = 'profissional', visualTheme = 'Mínimo Moderno', slideCount = 7, brand } = body
+    const {
+      topic,
+      format = 'standard',
+      tone = 'profissional',
+      visualTheme = 'Mínimo Moderno',
+      slideCount = 7,
+      brand,
+      studioProjectId,
+      studioPosition,
+    } = body
+    const requestedSlideCount = Number(slideCount)
+    const safeSlideCount = Number.isFinite(requestedSlideCount)
+      ? Math.min(7, Math.max(3, Math.round(requestedSlideCount)))
+      : 7
 
     if (!topic) {
       return NextResponse.json({ error: 'O tema (topic) é obrigatório' }, { status: 400 })
@@ -404,7 +417,7 @@ Sua missão é gerar o conteúdo HTML de um carrossel de alta conversão usando 
 TEMA PRINCIPAL: "${topic}"
 FORMATO DE CONTEÚDO: ${format}
 TOM DE VOZ: ${tone}
-NÚMERO DE SLIDES: ${slideCount}
+NÚMERO DE SLIDES: ${safeSlideCount}
 ESTILO VISUAL SOLICITADO: ${visualTheme}
 
 IDENTIDADE DA MARCA:
@@ -526,7 +539,7 @@ LAYOUTS EXEMPLARES PARA UTILIZAR NOS SLIDES DO MEIO:
     </div>
   </div>
 
-Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os estilos inline limpos e adequados para cores em contraste com fundos escuros.
+Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha os estilos inline limpos e adequados para cores em contraste com fundos escuros.
 `
 
     // Call Gemini API with fallback
@@ -574,10 +587,13 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
         title: topic,
         topic: topic,
         format: format,
-        slide_count: slideCount,
+        slide_count: safeSlideCount,
         html_content: finalHtml,
         status: 'ready',
-        credits_used: 1
+        credits_used: 1,
+        studio_project_id: typeof studioProjectId === 'string' ? studioProjectId : null,
+        studio_x: Number.isFinite(Number(studioPosition?.x)) ? Math.round(Number(studioPosition.x)) : null,
+        studio_y: Number.isFinite(Number(studioPosition?.y)) ? Math.round(Number(studioPosition.y)) : null
       })
       .select('id')
       .single()
@@ -606,7 +622,7 @@ Certifique-se de retornar exatamente ${slideCount} slides válidos. Mantenha os 
           userId: user.id,
           carouselId: carousel.id,
           html: finalHtml,
-          slideCount
+          slideCount: safeSlideCount
         })
       } catch (renderError) {
         console.error('Error rendering canonical carousel PNGs:', renderError)

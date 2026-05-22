@@ -9,12 +9,14 @@ import {
   Clipboard,
   Copy,
   Download,
+  FolderOpen,
   Hand,
   Image,
   LayoutGrid,
   Loader2,
   MousePointer2,
   Palette,
+  Plus,
   RefreshCw,
   Play,
   Share2,
@@ -27,12 +29,12 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
-import { snapshotCarouselTrack } from '@/lib/carousel-export'
+import { getCarouselSlideUrls } from '@/lib/carousel-export'
 
-const TOTAL_SLIDES = 7
 const SLIDE_W = 220
 const SLIDE_H = 275
 const GAP = 34
+const GROUP_GAP = 92
 
 const splitSlides = (html: string) => {
   if (typeof window === 'undefined' || !html) return []
@@ -62,11 +64,20 @@ type Brand = {
 
 type SlideNode = {
   id: string
+  carouselId: string
+  carouselTitle: string
   index: number
   x: number
   y: number
   html?: string
+  carouselHtml?: string
   imageUrl?: string
+}
+
+type StudioProject = {
+  id: string
+  name: string
+  created_at?: string
 }
 
 type SelectionBox = {
@@ -94,6 +105,8 @@ export default function CarouselStudioPage() {
   const selectionRef = useRef({ active: false, startX: 0, startY: 0 })
 
   const [brands, setBrands] = useState<Brand[]>([])
+  const [projects, setProjects] = useState<StudioProject[]>([])
+  const [activeProjectId, setActiveProjectId] = useState('')
   const [selectedBrandId, setSelectedBrandId] = useState('default')
   const [viewport, setViewport] = useState({ x: 180, y: 140, zoom: 0.72 })
   const [tool, setTool] = useState<'select' | 'pan'>('pan')
@@ -101,6 +114,7 @@ export default function CarouselStudioPage() {
   const [topic, setTopic] = useState('')
   const [htmlContent, setHtmlContent] = useState('')
   const [slideUrls, setSlideUrls] = useState<string[]>([])
+  const [slideCount, setSlideCount] = useState(7)
   const [nodes, setNodes] = useState<SlideNode[]>([])
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
@@ -110,6 +124,7 @@ export default function CarouselStudioPage() {
   const [propertiesOpen, setPropertiesOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [studioLoading, setStudioLoading] = useState(true)
   const [status, setStatus] = useState('Pronto para criar')
 
   const activeBrand = useMemo(
@@ -128,11 +143,17 @@ export default function CarouselStudioPage() {
   const selectionLabel = useMemo(() => {
     if (selectedNodes.length === 0) return ''
     const ordered = [...selectedNodes].sort((a, b) => a.index - b.index)
-    if (ordered.length === 1) return `Slide ${ordered[0].index + 1}`
-    return `${ordered.length} slides selecionados: ${ordered.map((node) => node.index + 1).join(', ')}`
+    if (ordered.length === 1) return `${ordered[0].carouselTitle}: slide ${ordered[0].index + 1}`
+    const sameCarousel = ordered.every((node) => node.carouselId === ordered[0].carouselId)
+    if (sameCarousel) return `${ordered[0].carouselTitle}: slides ${ordered.map((node) => node.index + 1).join(', ')}`
+    return `${ordered.length} slides selecionados em ${new Set(ordered.map((node) => node.carouselId)).size} carrosséis`
   }, [selectedNodes])
 
   const primarySelectedNode = selectedNodes[0] || null
+  const activeProject = useMemo(
+    () => projects.find((project) => project.id === activeProjectId),
+    [projects, activeProjectId]
+  )
 
   useEffect(() => {
     const closeMenus = () => {
@@ -143,28 +164,128 @@ export default function CarouselStudioPage() {
     return () => window.removeEventListener('click', closeMenus)
   }, [])
 
+  const buildNodesFromCarousel = (carousel: any, baseX: number, baseY: number) => {
+    const html = carousel?.html_content || ''
+    const slides = splitSlides(html)
+    const urls = getCarouselSlideUrls(supabase, carousel)
+    const count = Math.max(slides.length, urls.length, carousel?.slide_count || 3)
+    return Array.from({ length: count }).map((_, index) => ({
+      id: `${carousel.id}-slide-${index + 1}`,
+      carouselId: carousel.id,
+      carouselTitle: carousel.title || `Carrossel ${index + 1}`,
+      index,
+      x: baseX + index * (SLIDE_W + GAP),
+      y: baseY,
+      html: slides[index],
+      carouselHtml: html,
+      imageUrl: urls[index],
+    }))
+  }
+
+  const loadProjectCarousels = async (projectId: string) => {
+    setStudioLoading(true)
+    setSelectedNodeIds([])
+
+    const { data, error } = await supabase
+      .from('carousels')
+      .select('id, title, html_content, slide_count, studio_x, studio_y, created_at, slides(slide_index, storage_path)')
+      .eq('studio_project_id', projectId)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao carregar Studio:', error)
+      setStatus('Erro ao carregar projeto do Studio.')
+      setStudioLoading(false)
+      return
+    }
+
+    const loadedNodes = (data || []).flatMap((carousel: any, groupIndex: number) => {
+      const baseX = typeof carousel.studio_x === 'number' ? carousel.studio_x : groupIndex * (SLIDE_W + GAP) * 3
+      const baseY = typeof carousel.studio_y === 'number' ? carousel.studio_y : groupIndex * (SLIDE_H + 120)
+      return buildNodesFromCarousel(carousel, baseX, baseY)
+    })
+
+    setNodes(loadedNodes)
+    const latest = (data || [])[data?.length ? data.length - 1 : 0]
+    setHtmlContent(latest?.html_content || '')
+    setSlideUrls(latest ? getCarouselSlideUrls(supabase, latest) : [])
+    setTopic(latest?.title || '')
+    setStatus(loadedNodes.length ? 'Projeto carregado. Gere novos carrosséis ou reorganize a lousa.' : 'Projeto vazio. Crie o primeiro carrossel.')
+    setStudioLoading(false)
+  }
+
+  const createProject = async (userId: string, name?: string) => {
+    const projectName = name || `Projeto ${projects.length + 1 || 1}`
+    const { data, error } = await supabase
+      .from('studio_projects')
+      .insert({ user_id: userId, name: projectName })
+      .select('id, name, created_at')
+      .single()
+
+    if (error) throw error
+    const project = data as StudioProject
+    setProjects((current) => [project, ...current])
+    setActiveProjectId(project.id)
+    setNodes([])
+    setHtmlContent('')
+    setSlideUrls([])
+    setSelectedNodeIds([])
+    setStatus('Projeto novo criado.')
+    return project
+  }
+
   useEffect(() => {
-    async function loadBrands() {
+    async function loadStudio() {
+      setStudioLoading(true)
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setStudioLoading(false)
+        return
+      }
 
-      const { data } = await supabase
+      const { data: brandsData } = await supabase
         .from('brands')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
 
-      if (data) {
-        setBrands(data)
-        const defaultBrand = data.find((brand) => brand.is_default) || data[0]
+      if (brandsData) {
+        setBrands(brandsData)
+        const defaultBrand = brandsData.find((brand) => brand.is_default) || brandsData[0]
         if (defaultBrand) setSelectedBrandId(defaultBrand.id)
+      }
+
+      const { data: projectData, error: projectsError } = await supabase
+        .from('studio_projects')
+        .select('id, name, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (projectsError) {
+        console.error('Erro ao carregar projetos:', projectsError)
+        setStatus('Erro ao carregar projetos do Studio.')
+        setStudioLoading(false)
+        return
+      }
+
+      if (projectData && projectData.length > 0) {
+        setProjects(projectData)
+        setActiveProjectId(projectData[0].id)
+        await loadProjectCarousels(projectData[0].id)
+      } else {
+        await createProject(user.id, 'Meu primeiro projeto')
+        setStudioLoading(false)
       }
     }
 
-    loadBrands()
+    loadStudio()
   }, [])
+
+  useEffect(() => {
+    if (activeProjectId) loadProjectCarousels(activeProjectId)
+  }, [activeProjectId])
 
   const worldPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect()
@@ -318,17 +439,26 @@ export default function CarouselStudioPage() {
     setViewport({ x: 260 - minX * 0.88, y: 150 - minY * 0.88, zoom: 0.88 })
   }
 
-  const generateNodes = (html: string, urls: string[]) => {
+  const nextGroupPosition = () => {
+    if (nodes.length === 0) return { x: 0, y: 0 }
+    const maxY = Math.max(...nodes.map((node) => node.y))
+    return { x: 0, y: maxY + SLIDE_H + GROUP_GAP }
+  }
+
+  const generateNodes = (carouselId: string, title: string, html: string, urls: string[], count: number, baseX: number, baseY: number) => {
     const slides = splitSlides(html)
-    const created = Array.from({ length: Math.max(slides.length, urls.length, TOTAL_SLIDES) }).map((_, index) => ({
-      id: `slide-${index + 1}`,
+    const created = Array.from({ length: Math.max(slides.length, urls.length, count) }).map((_, index) => ({
+      id: `${carouselId}-slide-${index + 1}`,
+      carouselId,
+      carouselTitle: title,
       index,
-      x: index * (SLIDE_W + GAP),
-      y: 0,
+      x: baseX + index * (SLIDE_W + GAP),
+      y: baseY,
       html: slides[index],
+      carouselHtml: html,
       imageUrl: urls[index],
     }))
-    setNodes(created)
+    setNodes((current) => [...current, ...created])
     setSelectedNodeIds(created[0]?.id ? [created[0].id] : [])
   }
 
@@ -375,8 +505,19 @@ export default function CarouselStudioPage() {
     setGenerating(true)
     setStatus('Gerando carrossel na lousa...')
     setTopic(cleanPrompt)
+    const position = nextGroupPosition()
 
     try {
+      let projectId = activeProjectId
+      if (!projectId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) throw new Error('Faça login para criar um projeto.')
+        const project = await createProject(user.id, 'Meu primeiro projeto')
+        projectId = project.id
+      }
+
       const res = await fetch('/api/carousel/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -385,8 +526,10 @@ export default function CarouselStudioPage() {
           format: 'Listicle',
           tone: activeBrand?.tone || 'Educativo',
           visualTheme: 'DireÃ§Ã£o Autoral',
-          slideCount: TOTAL_SLIDES,
+          slideCount,
           brand: buildBrandPayload(),
+          studioProjectId: projectId,
+          studioPosition: position,
         }),
       })
 
@@ -398,10 +541,10 @@ export default function CarouselStudioPage() {
       setHtmlContent(data.html || '')
       const urls = Array.isArray(data.slideUrls) ? data.slideUrls : []
       setSlideUrls(urls)
-      generateNodes(data.html || '', urls)
+      generateNodes(data.carouselId || `draft-${Date.now()}`, cleanPrompt, data.html || '', urls, slideCount, position.x, position.y)
       setPrompt('')
       setStatus('Carrossel gerado. Arraste os slides ou peÃ§a alteraÃ§Ãµes.')
-      fitView()
+      setViewport({ x: 180 - position.x * 0.72, y: 150 - position.y * 0.72, zoom: 0.72 })
     } catch (err: any) {
       console.error(err)
       setStatus(err.message || 'Erro ao gerar')
@@ -412,7 +555,8 @@ export default function CarouselStudioPage() {
   }
 
   const handleModify = async (instruction: string) => {
-    if (!htmlContent || generating) return
+    const sourceHtml = primarySelectedNode?.carouselHtml || htmlContent
+    if (!sourceHtml || generating) return
 
     setGenerating(true)
     setStatus(`Alterando ${selectionLabel || 'carrossel'}...`)
@@ -422,7 +566,7 @@ export default function CarouselStudioPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentHtml: htmlContent,
+          currentHtml: sourceHtml,
           instruction: instructionWithSelection(instruction),
           visualTheme: 'DireÃ§Ã£o Autoral',
           brand: buildBrandPayload(),
@@ -434,9 +578,20 @@ export default function CarouselStudioPage() {
         throw new Error(data.error || 'Erro ao ajustar carrossel')
       }
 
-      setHtmlContent(data.html || '')
+      const nextHtml = data.html || ''
+      const targetCarouselId = primarySelectedNode?.carouselId || ''
+      setHtmlContent(nextHtml)
       setSlideUrls([])
-      generateNodes(data.html || '', [])
+      if (targetCarouselId) {
+        const slides = splitSlides(nextHtml)
+        setNodes((current) =>
+          current.map((node) =>
+            node.carouselId === targetCarouselId
+              ? { ...node, html: slides[node.index], imageUrl: undefined, carouselHtml: nextHtml }
+              : node
+          )
+        )
+      }
       setPrompt('')
       setStatus(`${selectionLabel || 'Carrossel'} ajustado.`)
     } catch (err: any) {
@@ -449,7 +604,7 @@ export default function CarouselStudioPage() {
   }
 
   const handleModifyShortcut = (instruction: string) => {
-    if (!htmlContent) return
+    if (!htmlContent && !primarySelectedNode?.carouselHtml) return
     setPrompt(instruction)
   }
 
@@ -500,40 +655,37 @@ export default function CarouselStudioPage() {
     }
   }
 
+  const handleCreateProject = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    try {
+      await createProject(user.id)
+    } catch (err) {
+      console.error('Erro ao criar projeto:', err)
+      setStatus('Erro ao criar projeto.')
+    }
+  }
+
   const handleExport = async (mode: 'all' | 'selected' = 'all') => {
-    if (!htmlContent && slideUrls.length === 0) return
-    const selectedIndexes = [...selectedNodes].map((node) => node.index).sort((a, b) => a - b)
-    const exportSelected = mode === 'selected' && selectedIndexes.length > 0
+    if (nodes.length === 0) return
+    const nodesToExport = mode === 'selected' && selectedNodes.length > 0 ? selectedNodes : nodes
+    const orderedNodes = [...nodesToExport].sort((a, b) => a.y - b.y || a.x - b.x)
+    const exportSelected = mode === 'selected' && selectedNodes.length > 0
     setExportMenuOpen(false)
-    setStatus(exportSelected ? `Exportando ${selectedIndexes.length} slide(s)...` : 'Preparando exportacao...')
+    setStatus(exportSelected ? `Exportando ${orderedNodes.length} slide(s)...` : 'Preparando exportacao...')
 
     try {
       const zip = new JSZip()
-      let urls = slideUrls
-
-      if (urls.length === 0) {
-        const exportHtml = snapshotCarouselTrack(exportTrackRef.current) || htmlContent
-        const res = await fetch('/api/carousel/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            html: exportHtml,
-            slideCount: TOTAL_SLIDES,
-            carouselId: 'studio_export',
-          }),
-        })
-        const data = await res.json()
-        urls = Array.isArray(data.urls) ? data.urls : []
-      }
-
-      const urlsToExport = exportSelected
-        ? selectedIndexes.map((index) => ({ url: urls[index], index })).filter((item) => Boolean(item.url))
-        : urls.map((url, index) => ({ url, index }))
 
       await Promise.all(
-        urlsToExport.map(async ({ url, index }) => {
-          const imgRes = await fetch(url)
-          zip.file(`slide_${index + 1}.png`, await imgRes.blob())
+        orderedNodes.map(async (node, exportIndex) => {
+          if (!node.imageUrl) return
+          const imgRes = await fetch(node.imageUrl)
+          const safeTitle = node.carouselTitle.trim().replace(/[^\w-]+/g, '_').slice(0, 36) || 'carrossel'
+          zip.file(`${String(exportIndex + 1).padStart(2, '0')}_${safeTitle}_slide_${node.index + 1}.png`, await imgRes.blob())
         })
       )
 
@@ -564,7 +716,28 @@ export default function CarouselStudioPage() {
           </button>
           <div>
             <h1 className="text-sm font-bold">Carousel Studio</h1>
-            <p className="text-[11px] text-[var(--text-muted)]">{status}</p>
+            <p className="text-[11px] text-[var(--text-muted)]">{studioLoading ? 'Carregando projeto...' : status}</p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-2 py-1.5 sm:flex">
+            <FolderOpen className="ml-1 h-4 w-4 text-[var(--accent)]" />
+            <select
+              value={activeProjectId}
+              onChange={(event) => setActiveProjectId(event.target.value)}
+              className="max-w-44 bg-transparent text-xs font-semibold text-white outline-none"
+            >
+              {projects.map((project) => (
+                <option key={project.id} value={project.id} className="bg-[#111116]">
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleCreateProject}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/15"
+              aria-label="Novo projeto"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
@@ -610,7 +783,7 @@ export default function CarouselStudioPage() {
           <div className="relative hidden sm:block">
             <button
               onClick={() => setExportMenuOpen((open) => !open)}
-              disabled={!htmlContent && slideUrls.length === 0}
+              disabled={nodes.length === 0}
               className="flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-40"
             >
               <Download className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5" />
@@ -851,8 +1024,20 @@ export default function CarouselStudioPage() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-bold">
             <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
-            {selectionLabel || 'Carousel Studio'}
+            {selectionLabel || activeProject?.name || 'Carousel Studio'}
           </div>
+          <select
+            value={slideCount}
+            onChange={(event) => setSlideCount(Number(event.target.value))}
+            className="rounded-full border border-white/10 bg-black/30 px-3 py-2 text-xs text-white focus:outline-none"
+            aria-label="Quantidade de slides"
+          >
+            {[3, 4, 5, 6, 7].map((count) => (
+              <option key={count} value={count} className="bg-[#111116]">
+                {count} slides
+              </option>
+            ))}
+          </select>
           <select
             value={selectedBrandId}
             onChange={(event) => setSelectedBrandId(event.target.value)}
