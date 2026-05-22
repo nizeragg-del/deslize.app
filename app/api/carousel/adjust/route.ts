@@ -182,7 +182,7 @@ export async function POST(req: Request) {
         width: 100% !important;
         min-width: 100% !important;
         height: 100% !important;
-        padding: 85px 40px !important;
+        padding: 78px 28px 92px !important;
         background: ${bgColor} !important;
         color: #F8FAFC !important;
         position: relative !important;
@@ -194,10 +194,10 @@ export async function POST(req: Request) {
       .ig-slide * { box-sizing: border-box !important; max-width: 100% !important; }
       .slide-tag {
         position: absolute !important;
-        top: 40px !important;
-        left: 40px !important;
-        max-width: 160px !important;
-        font-size: 11px !important;
+        top: 34px !important;
+        left: 28px !important;
+        max-width: 210px !important;
+        font-size: 10px !important;
         line-height: 1.2 !important;
         font-weight: 800 !important;
         letter-spacing: 1.5px !important;
@@ -207,8 +207,8 @@ export async function POST(req: Request) {
       }
       .slide-logo {
         position: absolute !important;
-        top: 40px !important;
-        right: 40px !important;
+        top: 32px !important;
+        right: 28px !important;
         display: flex !important;
         align-items: center !important;
         gap: 8px !important;
@@ -219,43 +219,66 @@ export async function POST(req: Request) {
       .slide-logo-text { font-size: 14px !important; line-height: 1 !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
       .slide-h {
         font-family: '${fontDisplay}', sans-serif !important;
-        font-size: 32px !important;
+        font-size: 28px !important;
         line-height: 1.08 !important;
         font-weight: 800 !important;
         letter-spacing: 0 !important;
-        margin: 0 0 22px !important;
-        text-align: center !important;
+        margin: 0 0 14px !important;
+        text-align: left !important;
         position: relative !important;
         z-index: 10 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 94px !important;
+        overflow: hidden !important;
       }
       .slide-body {
         font-family: '${fontBody}', sans-serif !important;
-        font-size: 16px !important;
-        line-height: 1.55 !important;
+        font-size: 15px !important;
+        line-height: 1.5 !important;
         color: rgba(255,255,255,0.78) !important;
-        text-align: center !important;
-        margin: 0 auto !important;
-        max-width: 90% !important;
+        text-align: left !important;
+        margin: 0 !important;
+        max-width: 96% !important;
+        max-height: 82px !important;
+        overflow: hidden !important;
         position: relative !important;
         z-index: 10 !important;
       }
+      .slide-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 270px !important;
+        margin: auto 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        position: relative !important;
+        z-index: 10 !important;
+        overflow: hidden !important;
+      }
       .slide-num-bg { pointer-events: none !important; }
-      .slide-progress { position: absolute !important; bottom: 40px !important; left: 40px !important; right: 40px !important; z-index: 20 !important; }
+      .slide-progress { position: absolute !important; bottom: 40px !important; left: 28px !important; right: 28px !important; z-index: 20 !important; }
       .gradient-span {
         background: linear-gradient(135deg, ${pColor} 0%, ${sColor} 100%) !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
       }
       .glass-panel, .console-panel, .quote-box {
-        padding: 18px !important;
+        padding: 14px !important;
         margin: 0 auto !important;
         max-width: 100% !important;
+        max-height: 112px !important;
+        overflow: hidden !important;
       }
       .brand-ribbon { position: absolute !important; height: 18px !important; border-radius: 999px !important; background: linear-gradient(90deg, ${pColor}, ${sColor}) !important; opacity: 0.9 !important; z-index: 2 !important; }
       .accent-arc { position: absolute !important; width: 210px !important; height: 210px !important; border: 22px solid ${pColor} !important; border-radius: 999px !important; opacity: 0.2 !important; z-index: 1 !important; }
       .soft-grid { position: absolute !important; inset: 0 !important; background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px) !important; background-size: 42px 42px !important; mask-image: linear-gradient(to bottom, transparent, black 20%, black 75%, transparent) !important; opacity: 0.35 !important; z-index: 1 !important; }
-      .kicker-pill { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 7px 10px !important; border-radius: 999px !important; background: ${pColor}22 !important; border: 1px solid ${pColor}55 !important; color: #fff !important; font-size: 10px !important; line-height: 1 !important; font-weight: 800 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; position: relative !important; z-index: 10 !important; }
-      .stat-card, .insight-card { background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; padding: 14px !important; position: relative !important; z-index: 10 !important; }
+      .kicker-pill { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 6px 10px !important; border-radius: 999px !important; background: ${pColor}22 !important; border: 1px solid ${pColor}55 !important; color: #fff !important; font-size: 9px !important; line-height: 1 !important; font-weight: 800 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; position: relative !important; z-index: 10 !important; max-width: 88% !important; overflow: hidden !important; white-space: nowrap !important; }
+      .stat-card, .insight-card { background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; padding: 13px !important; position: relative !important; z-index: 10 !important; width: 100% !important; max-width: 100% !important; max-height: 108px !important; overflow: hidden !important; }
+      .stat-card *, .insight-card *, .glass-panel *, .console-panel *, .quote-box * { line-height: 1.25 !important; }
       .connector-line { height: 2px !important; background: linear-gradient(90deg, ${pColor}, transparent) !important; border-radius: 999px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
     `
 
@@ -294,7 +317,10 @@ REGRAS E DIRETRIZES DE AJUSTE:
 3. Se a instrução for global (ex: "mude o tom de voz para mais descontraído"), aplique de forma homogênea a todos os slides.
 4. Mantenha estritamente o layout do Instagram e as classes utilitárias (.ig-slide, .slide-tag, .slide-logo, .slide-logo-dot, .slide-logo-text, .slide-h, .slide-body, .slide-num-bg). Pode usar também .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card e .connector-line.
 5. É proibido usar <style> adicional, font-size inline, width inline, transform inline, scale inline, position fixed, position sticky ou classes de largura que alterem a proporção do slide.
-5. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
+6. Todo conteúdo principal deve ficar dentro de <div class="slide-content">. Se o HTML atual tiver .slide-h, .slide-body, .insight-card, .stat-card, .kicker-pill ou CTA soltos fora dessa área, reorganize para dentro dela.
+7. Evite bagunça vertical: no máximo 3 filhos diretos dentro de .slide-content; máximo 1 card/painel por slide; corpo com até 16 palavras; card com 1 título curto + 1 frase curta. Não use my-6, my-8, mt-8, mb-8, py-6 ou py-8.
+8. Use composição "landing editorial" como padrão: tag e logo bem no topo, conteúdo amplo alinhado à esquerda, poucas linhas e muito espaço negativo. Evite títulos centralizados espremidos. Não insira <br> manual dentro de .slide-h; encurte o texto quando passar de 3 linhas.
+9. Se for solicitado um ícone ou marcador, use os SVGs limpos da biblioteca fornecida na geração:
   - Checkmark verde: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: ${pColor};"><polyline points="20 6 9 17 4 12"></polyline></svg>
   - Alerta/Erro: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
   - Dica/Lâmpada: <svg class="inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .5 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>
