@@ -186,6 +186,16 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
     setTimeout(() => setCopiedCaption(false), 3000)
   }
 
+  const handleGenerateBriefIdea = () => {
+    const baseTopic = topic.trim()
+
+    setTopic(
+      baseTopic
+        ? `${baseTopic}\n\nTransforme isso em um carrossel com gancho forte, promessa clara, exemplos práticos, quebra de objeção e CTA final para conversa no direct.`
+        : 'Crie um carrossel sobre um problema urgente do meu público, com gancho forte na capa, 5 ideias práticas no desenvolvimento, tom educativo e CTA final para gerar conversas no direct.'
+    )
+  }
+
   const handleStart = (clientX: number) => {
     if (!htmlContent) return
     setIsDragging(true)
@@ -476,26 +486,39 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
         </div>
 
         <form onSubmit={handleGenerate} className="flex-1 flex flex-col gap-5">
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] gap-6">
-            <div className="flex flex-col">
-              <label className="flex items-center gap-2 text-sm font-medium mb-2 text-white">
-                <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
-              </label>
+          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(320px,1.05fr)_minmax(260px,0.82fr)_minmax(260px,0.82fr)] gap-5 xl:gap-6">
+            <div className="lg:col-span-2 xl:col-span-1 xl:row-span-2 flex flex-col min-h-[360px]">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-white">
+                  <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateBriefIdea}
+                  className="group relative overflow-hidden rounded-xl border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/15 px-3 py-2 text-xs font-bold text-white transition-all hover:border-[var(--accent)]/70 hover:bg-[var(--brand-primary)]/25"
+                  aria-label="Gerar conteudo por IA"
+                >
+                  <span className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-[var(--accent)]/30 blur-md transition-transform group-hover:scale-150"></span>
+                  <span className="relative flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    IA
+                  </span>
+                </button>
+              </div>
               <textarea 
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 placeholder="Ex: 5 erros que fazem uma clínica perder pacientes no Instagram. Público: dentistas premium. Quero tom seguro, visual sofisticado e CTA para diagnóstico."
-                className="w-full flex-1 min-h-[260px] xl:min-h-0 bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none leading-relaxed"
+                className="w-full flex-1 min-h-[320px] xl:min-h-0 bg-black/25 border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent transition-all resize-none leading-relaxed"
                 required
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 content-start">
-            <div className="md:col-span-2">
+            <div className="flex flex-col">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Layout className="w-4 h-4" /> Estrutura narrativa
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
                 {formatOptions.map(f => (
                   <div 
                     key={f.value}
@@ -513,11 +536,11 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="flex flex-col">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Type className="w-4 h-4" /> Tom de voz
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
                 {toneOptions.map(t => (
                   <div 
                     key={t}
@@ -534,11 +557,11 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="flex flex-col">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Brush className="w-4 h-4" /> Direção visual
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {visualThemeOptions.map(style => (
                   <div 
                     key={style.value}
@@ -556,7 +579,7 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="flex flex-col justify-end">
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Palette className="w-4 h-4" /> Brand Kit
               </label>
@@ -582,19 +605,24 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 )}
               </select>
             </div>
-            </div>
           </div>
 
           <button 
             type="submit" 
             disabled={loading || !topic}
-            className="w-full btn-primary py-4 flex items-center justify-center gap-2 disabled:opacity-70"
+            className="group relative w-full overflow-hidden rounded-2xl bg-[var(--brand-primary)] px-6 py-5 text-sm font-black text-white shadow-[0_0_36px_rgba(124,58,237,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_52px_rgba(6,182,212,0.38)] disabled:translate-y-0 disabled:opacity-70"
           >
+            <span className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 opacity-40 transition-transform duration-500 group-hover:scale-125"></span>
+            <span className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)]/25 blur-2xl transition-transform duration-500 group-hover:scale-150"></span>
+            <span className="absolute -left-10 top-1/2 h-20 w-20 -translate-y-1/2 rounded-full bg-white/20 blur-2xl"></span>
+            <span className="absolute -right-8 top-0 h-24 w-24 rounded-full bg-[var(--accent)]/30 blur-2xl"></span>
+            <span className="relative flex items-center justify-center gap-2">
             {loading ? (
               <><RefreshCw className="w-5 h-5 animate-spin" /> Criando direção visual...</>
             ) : (
               <><Sparkles className="w-5 h-5" /> Gerar carrossel</>
             )}
+            </span>
           </button>
         </form>
 
