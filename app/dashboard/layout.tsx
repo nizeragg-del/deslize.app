@@ -76,6 +76,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Novo Carrossel', href: '/dashboard/novo', icon: Plus },
+    { name: 'Studio', href: '/dashboard/studio', icon: Sparkles },
     { name: 'Meus Carrosséis', href: '/dashboard/historico', icon: History },
     { name: 'Brand Kit', href: '/dashboard/marca', icon: Sparkles },
     { name: 'Planos e Faturamento', href: '/dashboard/planos', icon: Settings },

@@ -45,6 +45,7 @@ export default function NewCarouselPage() {
   const [profile, setProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [isUpsellModalOpen, setIsUpsellModalOpen] = useState(false)
+  const [generatingBriefIdea, setGeneratingBriefIdea] = useState(false)
 
   // New UI/UX states (Melhorias 4, 5, 12, 13)
   const [loadingStage, setLoadingStage] = useState(0)
@@ -186,14 +187,32 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
     setTimeout(() => setCopiedCaption(false), 3000)
   }
 
-  const handleGenerateBriefIdea = () => {
-    const baseTopic = topic.trim()
+  const handleGenerateBriefIdea = async () => {
+    if (generatingBriefIdea) return
 
-    setTopic(
-      baseTopic
-        ? `${baseTopic}\n\nTransforme isso em um carrossel com gancho forte, promessa clara, exemplos práticos, quebra de objeção e CTA final para conversa no direct.`
-        : 'Crie um carrossel sobre um problema urgente do meu público, com gancho forte na capa, 5 ideias práticas no desenvolvimento, tom educativo e CTA final para gerar conversas no direct.'
-    )
+    setGeneratingBriefIdea(true)
+    try {
+      const res = await fetch('/api/carousel/brief-ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId: selectedBrandId,
+          currentBrief: topic,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'NÃ£o consegui gerar uma ideia agora.')
+      }
+
+      setTopic(data.brief)
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || 'Erro ao gerar ideia com IA')
+    } finally {
+      setGeneratingBriefIdea(false)
+    }
   }
 
   const handleStart = (clientX: number) => {
@@ -280,7 +299,12 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             fontBody: activeBrand.font_body,
             tagline: activeBrand.tagline,
             tone: activeBrand.tone,
-            logoUrl: activeBrand.logo_url
+            logoUrl: activeBrand.logo_url,
+            niche: activeBrand.niche,
+            targetAudience: activeBrand.target_audience,
+            mainOffer: activeBrand.main_offer,
+            audiencePains: activeBrand.audience_pains,
+            contentGoal: activeBrand.content_goal
           } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
@@ -350,7 +374,12 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
             fontBody: activeBrand.font_body,
             tagline: activeBrand.tagline,
             tone: activeBrand.tone,
-            logoUrl: activeBrand.logo_url
+            logoUrl: activeBrand.logo_url,
+            niche: activeBrand.niche,
+            targetAudience: activeBrand.target_audience,
+            mainOffer: activeBrand.main_offer,
+            audiencePains: activeBrand.audience_pains,
+            contentGoal: activeBrand.content_goal
           } : {
             name: 'suamarca',
             primaryColor: '#7C3AED',
@@ -495,13 +524,18 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
                 <button
                   type="button"
                   onClick={handleGenerateBriefIdea}
-                  className="group relative overflow-hidden rounded-xl border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/15 px-3 py-2 text-xs font-bold text-white transition-all hover:border-[var(--accent)]/70 hover:bg-[var(--brand-primary)]/25"
+                  disabled={generatingBriefIdea}
+                  className="group relative overflow-hidden rounded-xl border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/15 px-3 py-2 text-xs font-bold text-white transition-all hover:border-[var(--accent)]/70 hover:bg-[var(--brand-primary)]/25 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Gerar conteudo por IA"
                 >
                   <span className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-[var(--accent)]/30 blur-md transition-transform group-hover:scale-150"></span>
                   <span className="relative flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
-                    IA
+                    {generatingBriefIdea ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    )}
+                    {generatingBriefIdea ? 'Gerando' : 'IA'}
                   </span>
                 </button>
               </div>

@@ -41,6 +41,11 @@ export default function BrandKitPage() {
     fontDisplay: 'Outfit',
     fontBody: 'Inter',
     logoUrl: '',
+    niche: '',
+    targetAudience: '',
+    mainOffer: '',
+    audiencePains: '',
+    contentGoal: '',
     isDefault: false
   })
 
@@ -91,6 +96,11 @@ export default function BrandKitPage() {
             fontDisplay: defaultBrand.font_display,
             fontBody: defaultBrand.font_body,
             logoUrl: defaultBrand.logo_url || '',
+            niche: defaultBrand.niche || '',
+            targetAudience: defaultBrand.target_audience || '',
+            mainOffer: defaultBrand.main_offer || '',
+            audiencePains: defaultBrand.audience_pains || '',
+            contentGoal: defaultBrand.content_goal || '',
             isDefault: defaultBrand.is_default || false
           })
         } else {
@@ -105,6 +115,11 @@ export default function BrandKitPage() {
             fontDisplay: 'Outfit',
             fontBody: 'Inter',
             logoUrl: '',
+            niche: '',
+            targetAudience: '',
+            mainOffer: '',
+            audiencePains: '',
+            contentGoal: '',
             isDefault: true
           })
         }
@@ -137,6 +152,11 @@ export default function BrandKitPage() {
       fontDisplay: brand.font_display,
       fontBody: brand.font_body,
       logoUrl: brand.logo_url || '',
+      niche: brand.niche || '',
+      targetAudience: brand.target_audience || '',
+      mainOffer: brand.main_offer || '',
+      audiencePains: brand.audience_pains || '',
+      contentGoal: brand.content_goal || '',
       isDefault: brand.is_default || false
     })
   }
@@ -179,6 +199,11 @@ export default function BrandKitPage() {
           font_body: 'Inter',
           tagline: 'Seu Slogan',
           tone: 'Profissional',
+          niche: '',
+          target_audience: '',
+          main_offer: '',
+          audience_pains: '',
+          content_goal: '',
           is_default: brands.length === 0
         })
         .select('*')
@@ -200,6 +225,11 @@ export default function BrandKitPage() {
           fontDisplay: newBrand.font_display,
           fontBody: newBrand.font_body,
           logoUrl: newBrand.logo_url || '',
+          niche: newBrand.niche || '',
+          targetAudience: newBrand.target_audience || '',
+          mainOffer: newBrand.main_offer || '',
+          audiencePains: newBrand.audience_pains || '',
+          contentGoal: newBrand.content_goal || '',
           isDefault: newBrand.is_default || false
         })
       }
@@ -248,6 +278,11 @@ export default function BrandKitPage() {
         fontDisplay: nextBrand.font_display,
         fontBody: nextBrand.font_body,
         logoUrl: nextBrand.logo_url || '',
+        niche: nextBrand.niche || '',
+        targetAudience: nextBrand.target_audience || '',
+        mainOffer: nextBrand.main_offer || '',
+        audiencePains: nextBrand.audience_pains || '',
+        contentGoal: nextBrand.content_goal || '',
         isDefault: nextBrand.is_default || false
       })
     } catch (err: any) {
@@ -322,6 +357,11 @@ export default function BrandKitPage() {
         font_display: brandForm.fontDisplay,
         font_body: brandForm.fontBody,
         logo_url: brandForm.logoUrl,
+        niche: brandForm.niche,
+        target_audience: brandForm.targetAudience,
+        main_offer: brandForm.mainOffer,
+        audience_pains: brandForm.audiencePains,
+        content_goal: brandForm.contentGoal,
         is_default: brandForm.isDefault
       }
 
@@ -569,6 +609,77 @@ export default function BrandKitPage() {
                       </button>
                     </div>
                   )}
+                </div>
+              </div>
+            </section>
+
+            {/* Contexto Estratégico */}
+            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
+                <MessageSquare className="w-5 h-5 text-[var(--accent)]" />
+                <div>
+                  <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
+                    Contexto EstratÃ©gico
+                  </h2>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Essas informaÃ§Ãµes ajudam a IA a sugerir temas e briefs mais alinhados ao cliente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Nicho / Segmento</label>
+                  <input
+                    type="text"
+                    value={brandForm.niche}
+                    onChange={e => setBrandForm({ ...brandForm, niche: e.target.value })}
+                    placeholder="Ex: ClÃ­nica odontolÃ³gica premium"
+                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">PÃºblico-alvo</label>
+                  <input
+                    type="text"
+                    value={brandForm.targetAudience}
+                    onChange={e => setBrandForm({ ...brandForm, targetAudience: e.target.value })}
+                    placeholder="Ex: Adultos que querem melhorar o sorriso"
+                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Oferta principal</label>
+                  <input
+                    type="text"
+                    value={brandForm.mainOffer}
+                    onChange={e => setBrandForm({ ...brandForm, mainOffer: e.target.value })}
+                    placeholder="Ex: AvaliaÃ§Ã£o para lentes de contato dental"
+                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Objetivo do conteÃºdo</label>
+                  <input
+                    type="text"
+                    value={brandForm.contentGoal}
+                    onChange={e => setBrandForm({ ...brandForm, contentGoal: e.target.value })}
+                    placeholder="Ex: Gerar agendamentos pelo direct"
+                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Dores e desejos do pÃºblico</label>
+                  <textarea
+                    value={brandForm.audiencePains}
+                    onChange={e => setBrandForm({ ...brandForm, audiencePains: e.target.value })}
+                    placeholder="Ex: medo de procedimento caro, vergonha de sorrir, inseguranÃ§a com atendimento, desejo por resultado natural."
+                    className="w-full min-h-28 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm resize-none leading-relaxed"
+                  />
                 </div>
               </div>
             </section>

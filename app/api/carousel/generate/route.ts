@@ -51,6 +51,11 @@ export async function POST(req: Request) {
     const logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
     const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
     const brandName = brand?.name || 'suamarca'
+    const brandNiche = brand?.niche || 'nÃ£o informado'
+    const brandAudience = brand?.targetAudience || 'nÃ£o informado'
+    const brandOffer = brand?.mainOffer || 'nÃ£o informado'
+    const brandPains = brand?.audiencePains || 'nÃ£o informado'
+    const brandContentGoal = brand?.contentGoal || 'gerar interesse e conversas'
     const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const logoMarkup = safeLogoUrl
       ? `<div class="slide-logo"><img class="slide-logo-img" src="${safeLogoUrl}" alt="${safeBrandName}"></div>`
@@ -407,6 +412,13 @@ IDENTIDADE DA MARCA:
 - Cor Primária (Destaques e Acentos): ${pColor}
 - Cor Secundária: ${sColor}
 - Logo: ${logoUrl ? `usar a imagem ${logoUrl}` : 'sem logo enviada; usar bolinha colorida + nome'}
+
+CONTEXTO ESTRATÃ‰GICO DA MARCA:
+- Nicho/segmento: ${brandNiche}
+- PÃºblico-alvo: ${brandAudience}
+- Oferta principal: ${brandOffer}
+- Dores e desejos do pÃºblico: ${brandPains}
+- Objetivo do conteÃºdo: ${brandContentGoal}
 
 ${themeRules}
 

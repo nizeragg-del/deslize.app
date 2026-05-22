@@ -1,0 +1,6 @@
+ALTER TABLE public.brands
+  ADD COLUMN IF NOT EXISTS niche TEXT,
+  ADD COLUMN IF NOT EXISTS target_audience TEXT,
+  ADD COLUMN IF NOT EXISTS main_offer TEXT,
+  ADD COLUMN IF NOT EXISTS audience_pains TEXT,
+  ADD COLUMN IF NOT EXISTS content_goal TEXT;
