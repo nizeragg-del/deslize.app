@@ -487,7 +487,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
 
         <form onSubmit={handleGenerate} className="flex-1 flex flex-col gap-5">
           <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-5 md:p-6 flex-1 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(320px,1.05fr)_minmax(260px,0.82fr)_minmax(260px,0.82fr)] gap-5 xl:gap-6">
-            <div className="lg:col-span-2 xl:col-span-1 xl:row-span-2 flex flex-col min-h-[360px]">
+            <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-black/20 p-4 lg:col-span-2 xl:col-span-1 xl:row-span-2 flex flex-col min-h-[360px]">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-rose-500/70 via-rose-400/20 to-transparent"></div>
               <div className="flex items-center justify-between gap-3 mb-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-white">
                   <Target className="w-4 h-4 text-[var(--accent)]" /> Brief do carrossel
@@ -514,7 +515,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               />
             </div>
             
-            <div className="flex flex-col">
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-black/20 p-4 flex flex-col">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-emerald-400/70 via-emerald-400/20 to-transparent"></div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Layout className="w-4 h-4" /> Estrutura narrativa
               </label>
@@ -536,7 +538,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="flex flex-col">
+            <div className="relative overflow-hidden rounded-2xl border border-cyan-400/25 bg-black/20 p-4 flex flex-col">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan-400/70 via-cyan-400/20 to-transparent"></div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Type className="w-4 h-4" /> Tom de voz
               </label>
@@ -557,7 +560,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="flex flex-col">
+            <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-black/20 p-4 flex flex-col">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-purple-400/70 via-purple-400/20 to-transparent"></div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Brush className="w-4 h-4" /> Direção visual
               </label>
@@ -579,7 +583,8 @@ ${slideHeadings.slice(1, 6).map((h, i) => `${i + 1}️⃣ ${h}`).join('\n')}
               </div>
             </div>
 
-            <div className="flex flex-col justify-end">
+            <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-black/20 p-4 flex flex-col justify-end">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-amber-400/70 via-amber-400/20 to-transparent"></div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-[var(--text-muted)]">
                 <Palette className="w-4 h-4" /> Brand Kit
               </label>
