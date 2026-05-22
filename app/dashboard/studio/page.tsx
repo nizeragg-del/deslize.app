@@ -6,6 +6,8 @@ import JSZip from 'jszip'
 import {
   ArrowUp,
   ChevronDown,
+  Clipboard,
+  Copy,
   Download,
   Hand,
   Image,
@@ -13,11 +15,14 @@ import {
   Loader2,
   MousePointer2,
   Palette,
+  RefreshCw,
   Play,
   Share2,
   Sparkles,
   SquareDashedMousePointer,
+  Trash2,
   Wand2,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
@@ -74,6 +79,12 @@ type SelectionBox = {
   height: number
 }
 
+type ContextMenuState = {
+  x: number
+  y: number
+  nodeId: string
+} | null
+
 export default function CarouselStudioPage() {
   const supabase = createClient()
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -94,6 +105,10 @@ export default function CarouselStudioPage() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [propertiesOpen, setPropertiesOpen] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [status, setStatus] = useState('Pronto para criar')
 
@@ -116,6 +131,17 @@ export default function CarouselStudioPage() {
     if (ordered.length === 1) return `Slide ${ordered[0].index + 1}`
     return `${ordered.length} slides selecionados: ${ordered.map((node) => node.index + 1).join(', ')}`
   }, [selectedNodes])
+
+  const primarySelectedNode = selectedNodes[0] || null
+
+  useEffect(() => {
+    const closeMenus = () => {
+      setContextMenu(null)
+    }
+
+    window.addEventListener('click', closeMenus)
+    return () => window.removeEventListener('click', closeMenus)
+  }, [])
 
   useEffect(() => {
     async function loadBrands() {
@@ -265,6 +291,13 @@ export default function CarouselStudioPage() {
     dragRef.current.id = ''
   }
 
+  const openNodeContextMenu = (event: React.MouseEvent<HTMLDivElement>, node: SlideNode) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedNodeIds((current) => (current.includes(node.id) ? current : [node.id]))
+    setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id })
+  }
+
   const zoomBy = (delta: number) => {
     setViewport((current) => ({
       ...current,
@@ -274,6 +307,15 @@ export default function CarouselStudioPage() {
 
   const fitView = () => {
     setViewport({ x: 180, y: 150, zoom: 0.72 })
+  }
+
+  const focusSelection = () => {
+    const focusNodes = selectedNodes.length ? selectedNodes : nodes
+    if (!focusNodes.length) return
+
+    const minX = Math.min(...focusNodes.map((node) => node.x))
+    const minY = Math.min(...focusNodes.map((node) => node.y))
+    setViewport({ x: 260 - minX * 0.88, y: 150 - minY * 0.88, zoom: 0.88 })
   }
 
   const generateNodes = (html: string, urls: string[]) => {
@@ -406,6 +448,58 @@ export default function CarouselStudioPage() {
     }
   }
 
+  const handleModifyShortcut = (instruction: string) => {
+    if (!htmlContent) return
+    setPrompt(instruction)
+  }
+
+  const duplicateSelected = () => {
+    if (selectedNodes.length === 0) return
+    const timestamp = Date.now()
+    const duplicates = selectedNodes.map((node, duplicateIndex) => ({
+      ...node,
+      id: `${node.id}-copy-${timestamp}-${duplicateIndex}`,
+      x: node.x + 36,
+      y: node.y + 36,
+    }))
+    setNodes((current) => [...current, ...duplicates])
+    setSelectedNodeIds(duplicates.map((node) => node.id))
+    setStatus(`${duplicates.length} slide(s) duplicado(s).`)
+  }
+
+  const deleteSelected = () => {
+    if (selectedNodes.length === 0) return
+    setNodes((current) => current.filter((node) => !selectedNodeIds.includes(node.id)))
+    setSelectedNodeIds([])
+    setStatus(`${selectedNodes.length} slide(s) removido(s) da lousa.`)
+  }
+
+  const copySelectionPrompt = async () => {
+    if (!selectionLabel) return
+    await navigator.clipboard.writeText(selectionLabel)
+    setStatus(`${selectionLabel} copiado para a area de transferencia.`)
+  }
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Carousel Studio',
+          text: topic || 'Carrossel criado no Deslize',
+          url: shareUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 1800)
+      }
+      setStatus('Link do Studio compartilhado.')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   const handleExport = async (mode: 'all' | 'selected' = 'all') => {
     if (!htmlContent && slideUrls.length === 0) return
     const selectedIndexes = [...selectedNodes].map((node) => node.index).sort((a, b) => a - b)
@@ -496,10 +590,18 @@ export default function CarouselStudioPage() {
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             Generate
           </button>
-          <button className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
+          <button
+            onClick={() => handleModifyShortcut(selectionLabel ? `Melhore o texto do ${selectionLabel}` : 'Melhore o carrossel mantendo a identidade visual')}
+            disabled={!htmlContent}
+            className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-40"
+          >
             <Wand2 className="h-4 w-4" /> Modify
           </button>
-          <button className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
+          <button
+            onClick={() => setPreviewOpen(true)}
+            disabled={nodes.length === 0}
+            className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-40"
+          >
             <Play className="h-4 w-4" /> Preview
           </button>
         </div>
@@ -531,23 +633,41 @@ export default function CarouselStudioPage() {
               </div>
             )}
           </div>
-          <button className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10">
-            <Share2 className="h-4 w-4" /> Compartilhar
+          <button
+            onClick={handleShare}
+            className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10"
+          >
+            {shareCopied ? <Clipboard className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+            {shareCopied ? 'Copiado' : 'Compartilhar'}
           </button>
         </div>
       </header>
 
       <aside className="absolute right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 p-2 md:flex">
-        <button className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80">
+        <button
+          onClick={() => setTool('select')}
+          className={`h-10 w-10 rounded-full flex items-center justify-center ${tool === 'select' ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
+        >
           <MousePointer2 className="h-4 w-4" />
         </button>
-        <button className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80">
+        <button
+          onClick={() => setTool('select')}
+          className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80"
+        >
           <SquareDashedMousePointer className="h-4 w-4" />
         </button>
-        <button className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80">
+        <button
+          onClick={() => handleModifyShortcut(selectionLabel ? `Adicione uma imagem visual ao ${selectionLabel}` : 'Adicione imagens visuais ao carrossel')}
+          disabled={!htmlContent}
+          className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 disabled:opacity-40"
+        >
           <Image className="h-4 w-4" />
         </button>
-        <button className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80">
+        <button
+          onClick={() => setPropertiesOpen(true)}
+          disabled={!activeBrand}
+          className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 disabled:opacity-40"
+        >
           <Palette className="h-4 w-4" />
         </button>
       </aside>
@@ -608,6 +728,7 @@ export default function CarouselStudioPage() {
               onPointerMove={moveNode}
               onPointerUp={stopNodeDrag}
               onPointerCancel={stopNodeDrag}
+              onContextMenu={(event) => openNodeContextMenu(event, node)}
               className={`absolute rounded-2xl border bg-[#111115] shadow-2xl transition-shadow ${selectedNodeIds.includes(node.id) ? 'border-[var(--brand-primary)] shadow-[0_0_28px_rgba(124,58,237,0.35)]' : 'border-white/10'}`}
               style={{ left: node.x, top: node.y, width: SLIDE_W }}
             >
@@ -652,6 +773,79 @@ export default function CarouselStudioPage() {
           <ZoomIn className="h-4 w-4" />
         </button>
       </div>
+
+      {contextMenu && (
+        <div
+          className="fixed z-50 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#151518] p-1 text-sm text-white shadow-2xl"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setPreviewOpen(true)
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <Play className="h-4 w-4" /> Abrir preview
+          </button>
+          <button
+            onClick={() => {
+              handleModifyShortcut(`Reescreva o texto do ${selectionLabel || 'slide selecionado'} com mais impacto`)
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <Wand2 className="h-4 w-4" /> Modificar com IA
+          </button>
+          <button
+            onClick={() => {
+              duplicateSelected()
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <Copy className="h-4 w-4" /> Duplicar
+          </button>
+          <button
+            onClick={() => {
+              copySelectionPrompt()
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <Clipboard className="h-4 w-4" /> Copiar referÃªncia
+          </button>
+          <button
+            onClick={() => {
+              handleExport('selected')
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <Download className="h-4 w-4" /> Exportar selecionado
+          </button>
+          <button
+            onClick={() => {
+              focusSelection()
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/10"
+          >
+            <RefreshCw className="h-4 w-4" /> Focar na seleÃ§Ã£o
+          </button>
+          <div className="my-1 h-px bg-white/10"></div>
+          <button
+            onClick={() => {
+              deleteSelected()
+              setContextMenu(null)
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-red-300 hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4" /> Remover da lousa
+          </button>
+        </div>
+      )}
 
       <section className="absolute bottom-5 left-1/2 z-30 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2 rounded-3xl border border-[var(--brand-primary)]/40 bg-[#151518]/95 p-4 shadow-[0_0_45px_rgba(124,58,237,0.22)] backdrop-blur-xl">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -711,6 +905,83 @@ export default function CarouselStudioPage() {
           }}
         />
       </div>
+
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+          <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#101014] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-bold">Preview do carrossel</h2>
+                <p className="text-xs text-[var(--text-muted)]">{selectionLabel || 'Todos os slides'}</p>
+              </div>
+              <button onClick={() => setPreviewOpen(false)} className="h-9 w-9 rounded-full hover:bg-white/10 flex items-center justify-center">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto p-5">
+              {(selectedNodes.length ? selectedNodes : nodes).map((node) => (
+                <div key={`preview-${node.id}`} className="w-[260px] shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                  <div className="border-b border-white/10 px-3 py-2 text-xs font-bold">Slide {node.index + 1}</div>
+                  <div className="h-[325px] w-[260px] overflow-hidden">
+                    {node.imageUrl ? (
+                      <img src={node.imageUrl} alt={`Slide ${node.index + 1}`} className="h-full w-full object-cover" />
+                    ) : node.html ? (
+                      <div className="h-full w-full origin-top-left scale-[0.2407]">
+                        <style dangerouslySetInnerHTML={{ __html: previewStyles }} />
+                        <div
+                          className="h-[1350px] w-[1080px]"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(node.html, {
+                              FORCE_BODY: true,
+                              ADD_TAGS: ['style', 'link'],
+                              ADD_ATTR: ['href', 'rel', 'type'],
+                            }),
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {propertiesOpen && (
+        <div className="fixed right-5 top-24 z-40 w-80 rounded-3xl border border-white/10 bg-[#151518]/95 p-5 shadow-2xl backdrop-blur-xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold">Paleta da marca</h2>
+              <p className="text-xs text-[var(--text-muted)]">{activeBrand?.name || 'Brand Kit'}</p>
+            </div>
+            <button onClick={() => setPropertiesOpen(false)} className="h-8 w-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {[
+              ['PrimÃ¡ria', activeBrand?.primary_color || '#7C3AED'],
+              ['SecundÃ¡ria', activeBrand?.secondary_color || '#06B6D4'],
+              ['Fundo', activeBrand?.bg_color || '#0A0A0F'],
+            ].map(([label, color]) => (
+              <div key={label} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-3">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">{label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{color}</span>
+                  <span className="h-6 w-6 rounded-full border border-white/20" style={{ backgroundColor: color }}></span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => handleModifyShortcut('Reaplique a paleta da marca e melhore o contraste visual do carrossel')}
+            className="mt-4 w-full rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-xs font-bold text-white hover:bg-[var(--brand-primary)]/85"
+          >
+            Aplicar paleta com IA
+          </button>
+        </div>
+      )}
     </div>
   )
 }
