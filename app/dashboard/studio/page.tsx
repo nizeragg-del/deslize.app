@@ -5,6 +5,7 @@ import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
 import {
   ArrowUp,
+  ChevronDown,
   Download,
   Hand,
   Image,
@@ -63,12 +64,23 @@ type SlideNode = {
   imageUrl?: string
 }
 
+type SelectionBox = {
+  active: boolean
+  startX: number
+  startY: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export default function CarouselStudioPage() {
   const supabase = createClient()
   const canvasRef = useRef<HTMLDivElement>(null)
   const exportTrackRef = useRef<HTMLDivElement>(null)
   const panRef = useRef({ active: false, startX: 0, startY: 0, originX: 0, originY: 0 })
   const dragRef = useRef({ id: '', startX: 0, startY: 0, originX: 0, originY: 0 })
+  const selectionRef = useRef({ active: false, startX: 0, startY: 0 })
 
   const [brands, setBrands] = useState<Brand[]>([])
   const [selectedBrandId, setSelectedBrandId] = useState('default')
@@ -79,7 +91,9 @@ export default function CarouselStudioPage() {
   const [htmlContent, setHtmlContent] = useState('')
   const [slideUrls, setSlideUrls] = useState<string[]>([])
   const [nodes, setNodes] = useState<SlideNode[]>([])
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [status, setStatus] = useState('Pronto para criar')
 
@@ -87,6 +101,21 @@ export default function CarouselStudioPage() {
     () => brands.find((brand) => brand.id === selectedBrandId),
     [brands, selectedBrandId]
   )
+
+  const selectedNodes = useMemo(
+    () =>
+      selectedNodeIds
+        .map((id) => nodes.find((node) => node.id === id))
+        .filter(Boolean) as SlideNode[],
+    [nodes, selectedNodeIds]
+  )
+
+  const selectionLabel = useMemo(() => {
+    if (selectedNodes.length === 0) return ''
+    const ordered = [...selectedNodes].sort((a, b) => a.index - b.index)
+    if (ordered.length === 1) return `Slide ${ordered[0].index + 1}`
+    return `${ordered.length} slides selecionados: ${ordered.map((node) => node.index + 1).join(', ')}`
+  }, [selectedNodes])
 
   useEffect(() => {
     async function loadBrands() {
@@ -138,7 +167,7 @@ export default function CarouselStudioPage() {
     })
   }
 
-  const startPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const startPan = (event: React.PointerEvent<HTMLElement>) => {
     if (event.button !== 0 || tool !== 'pan') return
     panRef.current = {
       active: true,
@@ -150,7 +179,7 @@ export default function CarouselStudioPage() {
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  const movePan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const movePan = (event: React.PointerEvent<HTMLElement>) => {
     if (!panRef.current.active) return
     setViewport((current) => ({
       ...current,
@@ -163,10 +192,50 @@ export default function CarouselStudioPage() {
     panRef.current.active = false
   }
 
+  const startCanvasSelection = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.button !== 0 || tool !== 'select') return
+    const point = worldPoint(event.clientX, event.clientY)
+    selectionRef.current = { active: true, startX: point.x, startY: point.y }
+    setSelectionBox({ active: true, startX: point.x, startY: point.y, x: point.x, y: point.y, width: 0, height: 0 })
+    setSelectedNodeIds([])
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const moveCanvasSelection = (event: React.PointerEvent<HTMLElement>) => {
+    if (!selectionRef.current.active) return
+    const point = worldPoint(event.clientX, event.clientY)
+    const x = Math.min(selectionRef.current.startX, point.x)
+    const y = Math.min(selectionRef.current.startY, point.y)
+    const width = Math.abs(point.x - selectionRef.current.startX)
+    const height = Math.abs(point.y - selectionRef.current.startY)
+
+    setSelectionBox({ active: true, startX: selectionRef.current.startX, startY: selectionRef.current.startY, x, y, width, height })
+
+    const selected = nodes
+      .filter((node) => {
+        const nodeRight = node.x + SLIDE_W
+        const nodeBottom = node.y + SLIDE_H + 34
+        return node.x < x + width && nodeRight > x && node.y < y + height && nodeBottom > y
+      })
+      .map((node) => node.id)
+
+    setSelectedNodeIds(selected)
+  }
+
+  const stopCanvasSelection = () => {
+    selectionRef.current.active = false
+    setSelectionBox(null)
+  }
+
   const startNodeDrag = (event: React.PointerEvent<HTMLDivElement>, node: SlideNode) => {
     if (tool !== 'select') return
     event.stopPropagation()
-    setSelectedNodeId(node.id)
+    setSelectedNodeIds((current) => {
+      if (event.shiftKey) {
+        return current.includes(node.id) ? current.filter((id) => id !== node.id) : [...current, node.id]
+      }
+      return current.includes(node.id) ? current : [node.id]
+    })
     const point = worldPoint(event.clientX, event.clientY)
     dragRef.current = {
       id: node.id,
@@ -218,7 +287,7 @@ export default function CarouselStudioPage() {
       imageUrl: urls[index],
     }))
     setNodes(created)
-    setSelectedNodeId(created[0]?.id || null)
+    setSelectedNodeIds(created[0]?.id ? [created[0].id] : [])
   }
 
   const buildBrandPayload = () =>
@@ -245,9 +314,21 @@ export default function CarouselStudioPage() {
           secondaryColor: '#06B6D4',
         }
 
+  const instructionWithSelection = (text: string) => {
+    if (!selectedNodes.length) return text
+    const ordered = [...selectedNodes].sort((a, b) => a.index - b.index)
+    const slideText = ordered.length === 1 ? `slide ${ordered[0].index + 1}` : `slides ${ordered.map((node) => node.index + 1).join(', ')}`
+    return `Aplique esta instruÃ§Ã£o apenas no(s) ${slideText}: ${text}`
+  }
+
   const handleGenerate = async () => {
     const cleanPrompt = prompt.trim()
     if (!cleanPrompt || generating) return
+
+    if (htmlContent && selectedNodes.length > 0) {
+      await handleModify(cleanPrompt)
+      return
+    }
 
     setGenerating(true)
     setStatus('Gerando carrossel na lousa...')
@@ -288,9 +369,49 @@ export default function CarouselStudioPage() {
     }
   }
 
-  const handleExport = async () => {
+  const handleModify = async (instruction: string) => {
+    if (!htmlContent || generating) return
+
+    setGenerating(true)
+    setStatus(`Alterando ${selectionLabel || 'carrossel'}...`)
+
+    try {
+      const res = await fetch('/api/carousel/adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentHtml: htmlContent,
+          instruction: instructionWithSelection(instruction),
+          visualTheme: 'DireÃ§Ã£o Autoral',
+          brand: buildBrandPayload(),
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao ajustar carrossel')
+      }
+
+      setHtmlContent(data.html || '')
+      setSlideUrls([])
+      generateNodes(data.html || '', [])
+      setPrompt('')
+      setStatus(`${selectionLabel || 'Carrossel'} ajustado.`)
+    } catch (err: any) {
+      console.error(err)
+      setStatus(err.message || 'Erro ao ajustar')
+      alert(err.message || 'Erro ao ajustar carrossel')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleExport = async (mode: 'all' | 'selected' = 'all') => {
     if (!htmlContent && slideUrls.length === 0) return
-    setStatus('Preparando exportaÃ§Ã£o...')
+    const selectedIndexes = [...selectedNodes].map((node) => node.index).sort((a, b) => a - b)
+    const exportSelected = mode === 'selected' && selectedIndexes.length > 0
+    setExportMenuOpen(false)
+    setStatus(exportSelected ? `Exportando ${selectedIndexes.length} slide(s)...` : 'Preparando exportacao...')
 
     try {
       const zip = new JSZip()
@@ -311,8 +432,12 @@ export default function CarouselStudioPage() {
         urls = Array.isArray(data.urls) ? data.urls : []
       }
 
+      const urlsToExport = exportSelected
+        ? selectedIndexes.map((index) => ({ url: urls[index], index })).filter((item) => Boolean(item.url))
+        : urls.map((url, index) => ({ url, index }))
+
       await Promise.all(
-        urls.map(async (url, index) => {
+        urlsToExport.map(async ({ url, index }) => {
           const imgRes = await fetch(url)
           zip.file(`slide_${index + 1}.png`, await imgRes.blob())
         })
@@ -380,13 +505,32 @@ export default function CarouselStudioPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={!htmlContent && slideUrls.length === 0}
-            className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-40"
-          >
-            <Download className="h-4 w-4" /> Exportar
-          </button>
+          <div className="relative hidden sm:block">
+            <button
+              onClick={() => setExportMenuOpen((open) => !open)}
+              disabled={!htmlContent && slideUrls.length === 0}
+              className="flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-40"
+            >
+              <Download className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#131316] p-1 shadow-2xl">
+                <button
+                  onClick={() => handleExport('all')}
+                  className="w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
+                >
+                  Exportar todos os slides
+                </button>
+                <button
+                  onClick={() => handleExport('selected')}
+                  disabled={selectedNodes.length === 0}
+                  className="w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Exportar selecionados ({selectedNodes.length})
+                </button>
+              </div>
+            )}
+          </div>
           <button className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10">
             <Share2 className="h-4 w-4" /> Compartilhar
           </button>
@@ -412,10 +556,22 @@ export default function CarouselStudioPage() {
         ref={canvasRef}
         className={`absolute inset-0 z-10 overflow-hidden ${tool === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onWheel={handleWheel}
-        onPointerDown={startPan}
-        onPointerMove={movePan}
-        onPointerUp={stopPan}
-        onPointerCancel={stopPan}
+        onPointerDown={(event) => {
+          startPan(event)
+          startCanvasSelection(event)
+        }}
+        onPointerMove={(event) => {
+          movePan(event)
+          moveCanvasSelection(event)
+        }}
+        onPointerUp={() => {
+          stopPan()
+          stopCanvasSelection()
+        }}
+        onPointerCancel={() => {
+          stopPan()
+          stopCanvasSelection()
+        }}
       >
         <div
           className="absolute left-0 top-0 origin-top-left"
@@ -433,6 +589,18 @@ export default function CarouselStudioPage() {
             </div>
           )}
 
+          {selectionBox && (
+            <div
+              className="pointer-events-none absolute border border-[var(--accent)]/80 bg-[var(--accent)]/10"
+              style={{
+                left: selectionBox.x,
+                top: selectionBox.y,
+                width: selectionBox.width,
+                height: selectionBox.height,
+              }}
+            />
+          )}
+
           {nodes.map((node) => (
             <div
               key={node.id}
@@ -440,7 +608,7 @@ export default function CarouselStudioPage() {
               onPointerMove={moveNode}
               onPointerUp={stopNodeDrag}
               onPointerCancel={stopNodeDrag}
-              className={`absolute rounded-2xl border bg-[#111115] shadow-2xl transition-shadow ${selectedNodeId === node.id ? 'border-[var(--brand-primary)] shadow-[0_0_28px_rgba(124,58,237,0.35)]' : 'border-white/10'}`}
+              className={`absolute rounded-2xl border bg-[#111115] shadow-2xl transition-shadow ${selectedNodeIds.includes(node.id) ? 'border-[var(--brand-primary)] shadow-[0_0_28px_rgba(124,58,237,0.35)]' : 'border-white/10'}`}
               style={{ left: node.x, top: node.y, width: SLIDE_W }}
             >
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[11px] text-white/70">
@@ -489,7 +657,7 @@ export default function CarouselStudioPage() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-bold">
             <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
-            Carousel Studio
+            {selectionLabel || 'Carousel Studio'}
           </div>
           <select
             value={selectedBrandId}
@@ -564,3 +732,4 @@ const previewStyles = `
 .progress-fill { height: 100%; background: white; border-radius: 999px; }
 .progress-label { font-size: 28px; font-weight: 600; color: rgba(255,255,255,0.5); }
 `
+
