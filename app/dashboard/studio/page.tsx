@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
 import JSZip from 'jszip'
 import {
@@ -9,14 +11,12 @@ import {
   Clipboard,
   Copy,
   Download,
-  FolderOpen,
   Hand,
   Image,
   LayoutGrid,
   Loader2,
   MousePointer2,
   Palette,
-  Plus,
   RefreshCw,
   Play,
   Share2,
@@ -80,6 +80,11 @@ type StudioProject = {
   created_at?: string
 }
 
+type Profile = {
+  credits: number
+  plan: string
+}
+
 type SelectionBox = {
   active: boolean
   startX: number
@@ -97,6 +102,18 @@ type ContextMenuState = {
 } | null
 
 export default function CarouselStudioPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#09090b] text-white">Carregando Studio...</div>}>
+      <CarouselStudioCanvas />
+    </Suspense>
+  )
+}
+
+function CarouselStudioCanvas() {
+  const searchParams = useSearchParams()
+  const requestedProjectId = searchParams.get('project') || ''
+  const initialPrompt = searchParams.get('prompt') || ''
+  const requestedBrandId = searchParams.get('brand') || ''
   const supabase = createClient()
   const canvasRef = useRef<HTMLDivElement>(null)
   const exportTrackRef = useRef<HTMLDivElement>(null)
@@ -108,6 +125,7 @@ export default function CarouselStudioPage() {
   const [projects, setProjects] = useState<StudioProject[]>([])
   const [activeProjectId, setActiveProjectId] = useState('')
   const [selectedBrandId, setSelectedBrandId] = useState('default')
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [viewport, setViewport] = useState({ x: 180, y: 140, zoom: 0.72 })
   const [tool, setTool] = useState<'select' | 'pan'>('pan')
   const [prompt, setPrompt] = useState('')
@@ -122,6 +140,7 @@ export default function CarouselStudioPage() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [studioLoading, setStudioLoading] = useState(true)
@@ -163,6 +182,11 @@ export default function CarouselStudioPage() {
     window.addEventListener('click', closeMenus)
     return () => window.removeEventListener('click', closeMenus)
   }, [])
+
+  useEffect(() => {
+    if (initialPrompt) setPrompt(initialPrompt)
+    if (requestedBrandId) setSelectedBrandId(requestedBrandId)
+  }, [initialPrompt, requestedBrandId])
 
   const buildNodesFromCarousel = (carousel: any, baseX: number, baseY: number) => {
     const html = carousel?.html_content || ''
@@ -254,8 +278,20 @@ export default function CarouselStudioPage() {
       if (brandsData) {
         setBrands(brandsData)
         const defaultBrand = brandsData.find((brand) => brand.is_default) || brandsData[0]
-        if (defaultBrand) setSelectedBrandId(defaultBrand.id)
+        if (requestedBrandId) {
+          setSelectedBrandId(requestedBrandId)
+        } else if (defaultBrand) {
+          setSelectedBrandId(defaultBrand.id)
+        }
       }
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('credits, plan')
+        .eq('id', user.id)
+        .single()
+
+      if (profileData) setProfile(profileData)
 
       const { data: projectData, error: projectsError } = await supabase
         .from('studio_projects')
@@ -272,8 +308,9 @@ export default function CarouselStudioPage() {
 
       if (projectData && projectData.length > 0) {
         setProjects(projectData)
-        setActiveProjectId(projectData[0].id)
-        await loadProjectCarousels(projectData[0].id)
+        const initialProject = projectData.find((project) => project.id === requestedProjectId) || projectData[0]
+        setActiveProjectId(initialProject.id)
+        await loadProjectCarousels(initialProject.id)
       } else {
         await createProject(user.id, 'Meu primeiro projeto')
         setStudioLoading(false)
@@ -545,6 +582,14 @@ export default function CarouselStudioPage() {
       setPrompt('')
       setStatus('Carrossel gerado. Arraste os slides ou peÃ§a alteraÃ§Ãµes.')
       setViewport({ x: 180 - position.x * 0.72, y: 150 - position.y * 0.72, zoom: 0.72 })
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('credits, plan')
+        .single()
+      if (updatedProfile) {
+        setProfile(updatedProfile)
+        if ((updatedProfile.plan || 'free') === 'free') setUpgradeOpen(true)
+      }
     } catch (err: any) {
       console.error(err)
       setStatus(err.message || 'Erro ao gerar')
@@ -655,20 +700,6 @@ export default function CarouselStudioPage() {
     }
   }
 
-  const handleCreateProject = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
-
-    try {
-      await createProject(user.id)
-    } catch (err) {
-      console.error('Erro ao criar projeto:', err)
-      setStatus('Erro ao criar projeto.')
-    }
-  }
-
   const handleExport = async (mode: 'all' | 'selected' = 'all') => {
     if (nodes.length === 0) return
     const nodesToExport = mode === 'selected' && selectedNodes.length > 0 ? selectedNodes : nodes
@@ -706,38 +737,18 @@ export default function CarouselStudioPage() {
   }
 
   return (
-    <div className="fixed inset-0 lg:left-64 bg-[#09090b] text-white overflow-hidden">
+    <div className="fixed inset-0 bg-[#09090b] text-white overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18)_1.2px,transparent_1.4px)] bg-[length:28px_28px] opacity-35"></div>
 
       <header className="absolute left-5 right-5 top-5 z-30 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button className="h-11 w-11 rounded-full border border-white/10 bg-[#131316]/90 text-white flex items-center justify-center">
-            <LayoutGrid className="h-5 w-5" />
-          </button>
+          <Link href="/dashboard" className="flex items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-4 py-3 text-xs font-bold text-white hover:bg-white/10">
+            <LayoutGrid className="h-4 w-4" />
+            Voltar
+          </Link>
           <div>
-            <h1 className="text-sm font-bold">Carousel Studio</h1>
+            <h1 className="text-sm font-bold">{activeProject?.name || 'Carousel Studio'}</h1>
             <p className="text-[11px] text-[var(--text-muted)]">{studioLoading ? 'Carregando projeto...' : status}</p>
-          </div>
-          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-[#131316]/90 px-2 py-1.5 sm:flex">
-            <FolderOpen className="ml-1 h-4 w-4 text-[var(--accent)]" />
-            <select
-              value={activeProjectId}
-              onChange={(event) => setActiveProjectId(event.target.value)}
-              className="max-w-44 bg-transparent text-xs font-semibold text-white outline-none"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id} className="bg-[#111116]">
-                  {project.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleCreateProject}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/15"
-              aria-label="Novo projeto"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
           </div>
         </div>
 
@@ -1165,6 +1176,31 @@ export default function CarouselStudioPage() {
           >
             Aplicar paleta com IA
           </button>
+        </div>
+      )}
+
+      {upgradeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#151518] p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/20 text-[var(--accent)]">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <h2 className="text-2xl font-bold">Primeiro carrossel criado.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+              Sua geração grátis funcionou. Para continuar criando novos projetos e exportar tudo com tranquilidade, escolha um plano.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setUpgradeOpen(false)}
+                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-white/75 hover:bg-white/10"
+              >
+                Continuar vendo
+              </button>
+              <Link href="/dashboard/planos?plan=starter" className="flex-1 rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-sm font-bold text-white">
+                Assinar plano
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -73,6 +73,10 @@ export default function DashboardLayout({
 
   const maxCredits = plan === 'free' ? 1 : plan === 'starter' ? 30 : plan === 'pro' ? 80 : 200
 
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/studio')) {
+    return <>{children}</>
+  }
+
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Novo Carrossel', href: '/dashboard/novo', icon: Plus },
