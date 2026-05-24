@@ -41,15 +41,6 @@ export function HeroSection() {
       </div>
 
       <div className="hero-content-right">
-        <div className="real-product-copy">
-          <span>Fluxo real</span>
-          <h2>Do tema ao post pronto em segundos</h2>
-          <p>O Deslize transforma uma ideia em um carrossel editável, com Brand Kit e exportação pronta para o Instagram.</p>
-        </div>
-        <div className="real-product-shots" aria-label="Telas reais do Deslize">
-          <img src="/sales/04_dashboard.webp" alt="Dashboard do Deslize para criar um carrossel com IA" />
-          <img src="/sales/08_final_studio_view.webp" alt="Studio do Deslize com carrossel gerado e pronto para exportar" />
-        </div>
         <CarouselPreview />
       </div>
     </motion.section>
