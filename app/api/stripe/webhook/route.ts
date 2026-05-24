@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
+import { stripe } from '@/utils/stripe/server'
+import { getPlanByPriceId } from '@/utils/stripe/plans'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
@@ -49,29 +50,13 @@ export async function POST(req: Request) {
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
         const priceId = lineItems.data[0]?.price?.id
 
-        let creditsToAdd = 0
-        let newPlan = 'free'
+        const planConfig = getPlanByPriceId(priceId)
 
-        const starterPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_STARTER)
-        const proPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_PRO)
-        const agencyPrice = sanitizeEnvValue(process.env.STRIPE_PRICE_AGENCY)
-
-        if (priceId === starterPrice) {
-          creditsToAdd = 30
-          newPlan = 'starter'
-        } else if (priceId === proPrice) {
-          creditsToAdd = 80
-          newPlan = 'pro'
-        } else if (priceId === agencyPrice) {
-          creditsToAdd = 200
-          newPlan = 'agency'
-        }
-
-        if (creditsToAdd > 0) {
+        if (planConfig) {
           // Add transaction
           await supabaseAdmin.from('credit_transactions').insert({
             user_id: userId,
-            amount: creditsToAdd,
+            amount: planConfig.credits,
             reason: 'plan_upgrade',
             stripe_session_id: session.id
           })
@@ -89,8 +74,8 @@ export async function POST(req: Request) {
           await supabaseAdmin.from('profiles').update({
             stripe_customer_id: session.customer,
             stripe_subscription_id: session.subscription,
-            plan: newPlan,
-            credits: currentCredits + creditsToAdd
+            plan: planConfig.plan,
+            credits: currentCredits + planConfig.credits
           }).eq('id', userId)
         }
 
@@ -107,7 +92,6 @@ export async function POST(req: Request) {
         // Buscar a assinatura para obter os metadados
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const userId = subscription.metadata?.userId
-        const plan = subscription.metadata?.plan || 'free'
         const orderBump = subscription.metadata?.orderBump === 'true'
 
         if (!userId) {
@@ -115,20 +99,22 @@ export async function POST(req: Request) {
           break
         }
 
-        // Determinar créditos base do plano
-        let baseCredits = 0
-        if (plan === 'starter') baseCredits = 30
-        else if (plan === 'pro') baseCredits = 80
-        else if (plan === 'agency') baseCredits = 200
+        const invoicePriceId = invoice.lines?.data?.[0]?.price?.id
+        const planConfig = getPlanByPriceId(invoicePriceId)
+
+        if (!planConfig) {
+          console.warn(`[Webhook] Preço não reconhecido na fatura ${invoice.id}`)
+          break
+        }
 
         let creditsToAdd = 0
         let reason = 'subscription_renewal'
 
         if (invoice.billing_reason === 'subscription_create') {
-          creditsToAdd = baseCredits + (orderBump ? 20 : 0)
+          creditsToAdd = planConfig.credits + (orderBump ? 20 : 0)
           reason = 'plan_upgrade'
         } else if (invoice.billing_reason === 'subscription_cycle') {
-          creditsToAdd = baseCredits
+          creditsToAdd = planConfig.credits
           reason = 'subscription_renewal'
         }
 
@@ -154,11 +140,11 @@ export async function POST(req: Request) {
           await supabaseAdmin.from('profiles').update({
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
-            plan: plan,
+            plan: planConfig.plan,
             credits: currentCredits + creditsToAdd
           }).eq('id', userId)
 
-          console.log(`[Webhook] Processado pagamento para o usuário ${userId}. Plano: ${plan}. Créditos adicionados: ${creditsToAdd}`)
+          console.log(`[Webhook] Processado pagamento para o usuário ${userId}. Plano: ${planConfig.plan}. Créditos adicionados: ${creditsToAdd}`)
         }
         break
       }

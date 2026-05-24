@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/utils/stripe/server'
 import { createClient } from '@/utils/supabase/server'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +10,11 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const limited = checkRateLimit(`stripe:portal:${user.id}:${getClientIp(req)}`, 20, 60 * 60 * 1000)
+    if (!limited.allowed) {
+      return rateLimitResponse(limited.resetAt)
     }
 
     // Obter o customer_id do Stripe salvo no perfil do usuário

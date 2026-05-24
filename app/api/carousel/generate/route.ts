@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { renderCarouselToPngs } from '@/lib/server/carousel-renderer'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export const maxDuration = 60
 
@@ -26,6 +27,11 @@ export async function POST(req: Request) {
     }
 
     refundUserId = user.id
+
+    const limited = checkRateLimit(`carousel:generate:${user.id}:${getClientIp(req)}`, 8, 60 * 60 * 1000)
+    if (!limited.allowed) {
+      return rateLimitResponse(limited.resetAt)
+    }
 
     // Initialize admin client to bypass RLS for sensitive mutations
     const supabaseAdmin = createSupabaseClient(
@@ -55,13 +61,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'O tema (topic) é obrigatório' }, { status: 400 })
     }
 
+    if (
+      !brand?.name ||
+      !brand?.niche ||
+      !brand?.targetAudience ||
+      !(brand?.contentGoal || brand?.mainOffer || brand?.audiencePains)
+    ) {
+      return NextResponse.json(
+        { error: 'Configure seu Brand Kit com nicho, público e intenção antes de gerar.' },
+        { status: 400 }
+      )
+    }
+
+    let safeStudioProjectId: string | null = null
+    if (typeof studioProjectId === 'string' && studioProjectId) {
+      const { data: ownedProject, error: projectError } = await supabaseAdmin
+        .from('studio_projects')
+        .select('id')
+        .eq('id', studioProjectId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (projectError || !ownedProject) {
+        return NextResponse.json({ error: 'Projeto do Studio não encontrado.' }, { status: 403 })
+      }
+
+      safeStudioProjectId = ownedProject.id
+    }
+
     // Dynamic Fonts and CSS Styles based on the theme & Brand Kit properties
     const pColor = brand?.primaryColor || '#7C3AED'
     const sColor = brand?.secondaryColor || '#06B6D4'
     const bgColor = brand?.bgColor || '#0A0A0F'
     const fontDisplay = brand?.fontDisplay || 'Outfit'
     const fontBody = brand?.fontBody || 'Inter'
-    const logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    let logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    try {
+      const parsedLogoUrl = logoUrl ? new URL(logoUrl) : null
+      if (parsedLogoUrl && parsedLogoUrl.protocol !== 'https:') logoUrl = ''
+    } catch {
+      logoUrl = ''
+    }
     const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
     const brandName = brand?.name || 'suamarca'
     const brandNiche = brand?.niche || 'nÃ£o informado'
@@ -384,7 +424,7 @@ DIREÇÃO CRIATIVA AUTORAL:
 
     if (consumeError) {
       if ((consumeError.message || '').includes('insufficient_credits')) {
-        return NextResponse.json({ error: 'Creditos insuficientes. Adquira mais creditos para continuar.' }, { status: 403 })
+        return NextResponse.json({ error: 'Creditos insuficientes. Adquira mais creditos para continuar.' }, { status: 402 })
       }
 
       console.error('Error consuming credit:', consumeError)
@@ -591,7 +631,7 @@ Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha
         html_content: finalHtml,
         status: 'ready',
         credits_used: 1,
-        studio_project_id: typeof studioProjectId === 'string' ? studioProjectId : null,
+        studio_project_id: safeStudioProjectId,
         studio_x: Number.isFinite(Number(studioPosition?.x)) ? Math.round(Number(studioPosition.x)) : null,
         studio_y: Number.isFinite(Number(studioPosition?.y)) ? Math.round(Number(studioPosition.y)) : null
       })

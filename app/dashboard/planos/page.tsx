@@ -37,6 +37,7 @@ function PlansContent() {
   const searchParams = useSearchParams()
   const [billing, setBilling] = useState<'mensal' | 'anual'>('mensal')
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
+  const [portalError, setPortalError] = useState('')
 
   useEffect(() => {
     const planParam = searchParams.get('plan')
@@ -50,9 +51,9 @@ function PlansContent() {
       const res = await fetch('/api/stripe/portal', { method: 'POST' })
       const data = await res.json()
       if (data.url) window.location.href = data.url
-      else alert('Nenhuma assinatura ativa encontrada.')
+      else setPortalError('Nenhuma assinatura ativa encontrada.')
     } catch {
-      alert('Erro de conexão ao acessar o portal.')
+      setPortalError('Erro de conexão ao acessar o portal.')
     }
   }
 
@@ -69,6 +70,12 @@ function PlansContent() {
           Gerenciar assinatura
         </button>
       </div>
+
+      {portalError && (
+        <div className="rounded-2xl border border-yellow-300/20 bg-yellow-400/[0.10] px-5 py-4 text-sm font-semibold text-yellow-100">
+          {portalError}
+        </div>
+      )}
 
       <div className="inline-flex rounded-full border border-white/10 bg-[#191a1d] p-1">
         <button onClick={() => setBilling('mensal')} className={`rounded-full px-5 py-2 text-sm font-bold ${billing === 'mensal' ? 'bg-[#2f3135] text-white' : 'text-white/50'}`}>

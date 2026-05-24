@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
+import { getPlanPriceId } from '@/utils/stripe/plans'
 import { createClient } from '@/utils/supabase/server'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -11,17 +13,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    let { priceId, planKey, hasOrderBump } = await req.json()
-
-    if (!priceId && planKey) {
-      const envKey = `STRIPE_PRICE_${planKey.toUpperCase()}`
-      priceId = process.env[envKey]
+    const limited = checkRateLimit(`stripe:checkout:${user.id}:${getClientIp(req)}`, 12, 60 * 60 * 1000)
+    if (!limited.allowed) {
+      return rateLimitResponse(limited.resetAt)
     }
 
-    priceId = sanitizeEnvValue(priceId)
+    const { planKey, hasOrderBump } = await req.json()
+    const selectedPlan = getPlanPriceId(planKey)
 
-    if (!priceId) {
-      return NextResponse.json({ error: 'Plano inválido ou ID de preço ausente' }, { status: 400 })
+    if (!selectedPlan) {
+      return NextResponse.json({ error: 'Plano inválido ou indisponível.' }, { status: 400 })
     }
 
     // 1. Obter ou criar o customer no Stripe
@@ -68,13 +69,14 @@ export async function POST(req: Request) {
     // 3. Criar a assinatura como 'default_incomplete'
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: priceId }],
+      items: [{ price: selectedPlan.priceId }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId: user.id,
-        plan: planKey || 'starter',
+        planKey: selectedPlan.key,
+        plan: selectedPlan.plan,
         orderBump: hasOrderBump ? 'true' : 'false'
       }
     })
@@ -94,16 +96,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error creating subscription checkout:', error)
-    
-    let detailStr = ''
-    if (error.detail) {
-      detailStr = ` | Detail: ${typeof error.detail === 'object' ? JSON.stringify(error.detail) : error.detail}`
-    }
-    if (error.cause) {
-      detailStr += ` | Cause: ${typeof error.cause === 'object' ? JSON.stringify(error.cause) : error.cause}`
-    }
-    
-    const detailedMessage = `${error.message || 'Erro ao criar sessão de pagamento'} (Name: ${error.name || 'N/A'}, Code: ${error.code || 'N/A'}, Type: ${error.type || 'N/A'}${detailStr}, Stack: ${error.stack ? error.stack.substring(0, 150) : 'No stack'})`
-    return NextResponse.json({ error: detailedMessage }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar sessão de pagamento.' }, { status: 500 })
   }
 }

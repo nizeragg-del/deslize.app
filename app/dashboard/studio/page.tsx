@@ -576,7 +576,7 @@ function CarouselStudioCanvas() {
     if (!cleanPrompt || generating) return
 
     if (!brandConfigured) {
-      alert('Antes de gerar um carrossel, configure seu Brand Kit com nicho, público e intenção.')
+      setStatus('Configure seu Brand Kit com nicho, público e intenção antes de gerar.')
       window.location.href = '/dashboard/marca'
       return
     }
@@ -652,7 +652,7 @@ function CarouselStudioCanvas() {
       if (/cr[eé]ditos? insuficientes|sem cr[eé]ditos|adquira mais cr[eé]ditos/i.test(err.message || '')) {
         setCreditsUpsellOpen(true)
       } else {
-        alert(err.message || 'Erro ao gerar carrossel')
+        setStatus(err.message || 'Erro ao gerar carrossel')
       }
     } finally {
       setGenerating(false)
@@ -702,7 +702,6 @@ function CarouselStudioCanvas() {
     } catch (err: any) {
       console.error(err)
       setStatus(err.message || 'Erro ao ajustar')
-      alert(err.message || 'Erro ao ajustar carrossel')
     } finally {
       setGenerating(false)
     }
@@ -717,7 +716,7 @@ function CarouselStudioCanvas() {
     if (generating) return
 
     if (!brandConfigured) {
-      alert('Configure seu Brand Kit primeiro. A ideia é criada com base no nicho, público e intenção da sua marca.')
+      setStatus('Configure seu Brand Kit primeiro para gerar ideias com base na sua marca.')
       window.location.href = '/dashboard/marca'
       return
     }
@@ -743,7 +742,6 @@ function CarouselStudioCanvas() {
       setStatus('Ideia pronta. Revise e envie para gerar.')
     } catch (err: any) {
       setStatus(err.message || 'Erro ao gerar ideia.')
-      alert(err.message || 'Erro ao gerar ideia com IA.')
     } finally {
       setGenerating(false)
     }

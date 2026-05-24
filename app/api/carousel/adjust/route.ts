@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -16,6 +17,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
+    const limited = checkRateLimit(`carousel:adjust:${user.id}:${getClientIp(req)}`, 20, 60 * 60 * 1000)
+    if (!limited.allowed) {
+      return rateLimitResponse(limited.resetAt)
+    }
+
     // Parse the request body
     const body = await req.json()
     const { currentHtml, instruction, slideIndex, visualTheme = 'Mínimo Moderno', brand } = body
@@ -29,7 +35,13 @@ export async function POST(req: Request) {
     const bgColor = brand?.bgColor || '#0A0A0F'
     const fontDisplay = brand?.fontDisplay || 'Outfit'
     const fontBody = brand?.fontBody || 'Inter'
-    const logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    let logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
+    try {
+      const parsedLogoUrl = logoUrl ? new URL(logoUrl) : null
+      if (parsedLogoUrl && parsedLogoUrl.protocol !== 'https:') logoUrl = ''
+    } catch {
+      logoUrl = ''
+    }
     const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
     const brandName = brand?.name || 'suamarca'
     const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')

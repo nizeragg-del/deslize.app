@@ -81,6 +81,7 @@ export default function DashboardHome() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [selectedBrandId, setSelectedBrandId] = useState('')
   const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([])
+  const [notice, setNotice] = useState('')
 
   const filteredProjects = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -196,7 +197,7 @@ export default function DashboardHome() {
     if (creating) return
 
     if (openPrompt && !brandConfigured) {
-      alert('Antes de gerar um carrossel, configure seu Brand Kit com nicho, público e intenção.')
+      setNotice('Antes de gerar um carrossel, configure seu Brand Kit com nicho, público e intenção.')
       router.push('/dashboard/marca')
       return
     }
@@ -243,7 +244,7 @@ export default function DashboardHome() {
     if (generatingIdea) return
 
     if (!brandConfigured) {
-      alert('Configure seu Brand Kit primeiro. A ideia é criada com base no nicho, público e intenção da sua marca.')
+      setNotice('Configure seu Brand Kit primeiro. A ideia é criada com base no nicho, público e intenção da sua marca.')
       router.push('/dashboard/marca')
       return
     }
@@ -261,7 +262,7 @@ export default function DashboardHome() {
       setPrompt(shortLabel(data.title || data.angles?.[0] || data.brief))
       setGenerationBrief(data.brief)
     } catch (err: any) {
-      alert(err.message || 'Erro ao gerar ideia com IA.')
+      setNotice(err.message || 'Erro ao gerar ideia com IA.')
     } finally {
       setGeneratingIdea(false)
     }
@@ -308,6 +309,12 @@ export default function DashboardHome() {
           {!dashboardMode ? (
             <section className="relative mx-auto grid min-h-[calc(100vh-80px)] max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] gap-6 px-8 py-6">
               <div className="min-w-0">
+                {notice && (
+                  <div className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-purple-300/25 bg-purple-500/[0.12] px-5 py-4 text-sm font-semibold text-purple-100">
+                    <span>{notice}</span>
+                    <button onClick={() => setNotice('')} className="text-purple-100/70 hover:text-white" type="button">Fechar</button>
+                  </div>
+                )}
                 <HeroStatusBanner plan={plan} credits={credits} maxCredits={maxCredits} isPaidPlan={isPaidPlan} />
 
                 <h1 className="text-[58px] font-extrabold leading-none tracking-normal text-white">O que vamos criar hoje?</h1>
@@ -321,6 +328,7 @@ export default function DashboardHome() {
                       onChange={(event) => {
                         setPrompt(event.target.value)
                         setGenerationBrief('')
+                        setNotice('')
                       }}
                       placeholder="Descreva o carrossel que você quer gerar..."
                       className="min-h-[235px] w-full resize-none bg-transparent text-xl text-white outline-none placeholder:text-white/34"
