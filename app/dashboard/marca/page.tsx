@@ -1,914 +1,354 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Sparkles, Palette, Type, MessageSquare, Upload, Save, Plus, Trash2, Check, Lock, RefreshCw, Crown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Check, Loader2, Palette, Plus, Save, Sparkles, Trash2, Type, Upload } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
-const PRESET_PALETTES = [
-  { name: 'Neon Cyber', primary: '#06B6D4', secondary: '#F43F5E', bg: '#0A0A0F' },
-  { name: 'Royal Gold', primary: '#EAB308', secondary: '#F59E0B', bg: '#171717' },
-  { name: 'Ultra Violet', primary: '#8B5CF6', secondary: '#C084FC', bg: '#0F0B1A' },
-  { name: 'Emerald Tech', primary: '#10B981', secondary: '#34D399', bg: '#061C14' },
-  { name: 'Monochrome', primary: '#FFFFFF', secondary: '#9CA3AF', bg: '#000000' },
-  { name: 'Sunset', primary: '#F97316', secondary: '#FB923C', bg: '#1A0E08' },
-  { name: 'Ocean Depth', primary: '#0EA5E9', secondary: '#38BDF8', bg: '#081426' },
-  { name: 'Rose Gold', primary: '#FDA4AF', secondary: '#FECDD3', bg: '#1C1214' },
-  { name: 'Mint Clean', primary: '#A7F3D0', secondary: '#6EE7B7', bg: '#0D1A16' },
-  { name: 'Deep Purple', primary: '#4C1D95', secondary: '#7C3AED', bg: '#0D0817' },
-  { name: 'Cherry Red', primary: '#E11D48', secondary: '#F43F5E', bg: '#1A0B0E' },
-  { name: 'Slate Minimal', primary: '#94A3B8', secondary: '#CBD5E1', bg: '#0F172A' },
+const presets = [
+  { name: 'Cyber', primary: '#a855f7', secondary: '#22d3ee', bg: '#09090b' },
+  { name: 'Emerald', primary: '#34d399', secondary: '#2dd4bf', bg: '#071713' },
+  { name: 'Editorial', primary: '#f8fafc', secondary: '#94a3b8', bg: '#101113' },
+  { name: 'Ruby', primary: '#fb7185', secondary: '#f97316', bg: '#180b10' },
 ]
+
+const colorFields = [
+  { label: 'Primária', key: 'primaryColor' as const },
+  { label: 'Secundária', key: 'secondaryColor' as const },
+  { label: 'Fundo', key: 'bgColor' as const },
+]
+
+const emptyBrand = {
+  name: 'Minha Marca',
+  tagline: '',
+  tone: 'Profissional',
+  primaryColor: '#a855f7',
+  secondaryColor: '#22d3ee',
+  bgColor: '#09090b',
+  fontDisplay: 'Outfit',
+  fontBody: 'Inter',
+  logoUrl: '',
+  niche: '',
+  targetAudience: '',
+  mainOffer: '',
+  audiencePains: '',
+  contentGoal: '',
+  isDefault: true,
+}
 
 export default function BrandKitPage() {
   const supabase = createClient()
-  
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [profile, setProfile] = useState<any>(null)
   const [brands, setBrands] = useState<any[]>([])
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
-  
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState(false)
-  
-  // Active editing form state
-  const [brandForm, setBrandForm] = useState({
-    name: '',
-    tagline: '',
-    tone: 'Profissional',
-    primaryColor: '#7C3AED',
-    secondaryColor: '#06B6D4',
-    bgColor: '#0A0A0F',
-    fontDisplay: 'Outfit',
-    fontBody: 'Inter',
-    logoUrl: '',
-    niche: '',
-    targetAudience: '',
-    mainOffer: '',
-    audiencePains: '',
-    contentGoal: '',
-    isDefault: false
-  })
+  const [form, setForm] = useState(emptyBrand)
+  const [saved, setSaved] = useState(false)
 
-  // Load all user profiles and brands
   useEffect(() => {
-    const link = document.createElement('link')
-    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Outfit:wght@700;800&family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&family=Montserrat:wght@700;800&family=DM+Sans:wght@400;500&family=Roboto:wght@400;500&family=Lora:wght@400;500&display=swap'
-    link.rel = 'stylesheet'
-    document.head.appendChild(link)
-
     async function loadData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
 
-        // 1. Load profile to check plan
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        
-        if (profileData) {
-          setProfile(profileData)
-        }
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      const { data: brandData } = await supabase.from('brands').select('*').eq('user_id', user.id).order('created_at', { ascending: true })
 
-        // 2. Load brands
-        const { data: brandsData } = await supabase
-          .from('brands')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true })
+      setProfile(profileData)
+      setBrands(brandData || [])
 
-        if (brandsData && brandsData.length > 0) {
-          setBrands(brandsData)
-          
-          // Select default brand first, or the first one in the list
-          const defaultBrand = brandsData.find(b => b.is_default) || brandsData[0]
-          setSelectedBrandId(defaultBrand.id)
-          
-          setBrandForm({
-            name: defaultBrand.name,
-            tagline: defaultBrand.tagline || '',
-            tone: defaultBrand.tone || 'Profissional',
-            primaryColor: defaultBrand.primary_color,
-            secondaryColor: defaultBrand.secondary_color,
-            bgColor: defaultBrand.bg_color,
-            fontDisplay: defaultBrand.font_display,
-            fontBody: defaultBrand.font_body,
-            logoUrl: defaultBrand.logo_url || '',
-            niche: defaultBrand.niche || '',
-            targetAudience: defaultBrand.target_audience || '',
-            mainOffer: defaultBrand.main_offer || '',
-            audiencePains: defaultBrand.audience_pains || '',
-            contentGoal: defaultBrand.content_goal || '',
-            isDefault: defaultBrand.is_default || false
-          })
-        } else {
-          // If no brands exist, initialize with a default template state
-          setBrandForm({
-            name: 'Minha Marca',
-            tagline: 'Slogan da minha marca',
-            tone: 'Profissional',
-            primaryColor: '#7C3AED',
-            secondaryColor: '#06B6D4',
-            bgColor: '#0A0A0F',
-            fontDisplay: 'Outfit',
-            fontBody: 'Inter',
-            logoUrl: '',
-            niche: '',
-            targetAudience: '',
-            mainOffer: '',
-            audiencePains: '',
-            contentGoal: '',
-            isDefault: true
-          })
-        }
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err)
-      } finally {
-        setLoading(false)
+      const active = brandData?.find((brand) => brand.is_default) || brandData?.[0]
+      if (active) {
+        setSelectedBrandId(active.id)
+        fillForm(active)
       }
-    }
-    loadData()
 
-    return () => {
-      document.head.removeChild(link)
+      setLoading(false)
     }
+
+    loadData()
   }, [])
 
-  // Handle switching selected brand
-  const handleSelectBrand = (brandId: string) => {
-    const brand = brands.find(b => b.id === brandId)
-    if (!brand) return
-    
-    setSelectedBrandId(brandId)
-    setBrandForm({
-      name: brand.name,
+  function fillForm(brand: any) {
+    setForm({
+      name: brand.name || '',
       tagline: brand.tagline || '',
       tone: brand.tone || 'Profissional',
-      primaryColor: brand.primary_color,
-      secondaryColor: brand.secondary_color,
-      bgColor: brand.bg_color,
-      fontDisplay: brand.font_display,
-      fontBody: brand.font_body,
+      primaryColor: brand.primary_color || '#a855f7',
+      secondaryColor: brand.secondary_color || '#22d3ee',
+      bgColor: brand.bg_color || '#09090b',
+      fontDisplay: brand.font_display || 'Outfit',
+      fontBody: brand.font_body || 'Inter',
       logoUrl: brand.logo_url || '',
       niche: brand.niche || '',
       targetAudience: brand.target_audience || '',
       mainOffer: brand.main_offer || '',
       audiencePains: brand.audience_pains || '',
       contentGoal: brand.content_goal || '',
-      isDefault: brand.is_default || false
+      isDefault: Boolean(brand.is_default),
     })
   }
 
-  // Get current brand limit from subscription plan
-  const getBrandLimit = () => {
-    if (!profile) return 1
-    const plan = profile.plan?.toLowerCase()
-    if (plan === 'pro') return 3
-    if (plan === 'agency' || plan === 'agência') return 10
-    return 1 // free / starter
+  function selectBrand(brand: any) {
+    setSelectedBrandId(brand.id)
+    fillForm(brand)
   }
 
-  const brandLimit = getBrandLimit()
-  const isLimitReached = brands.length >= brandLimit
+  async function createBrand() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
 
-  // Create a new brand profile
-  const handleCreateBrand = async () => {
-    if (isLimitReached) {
-      alert(`Seu plano atual (${profile?.plan || 'Grátis'}) permite criar no máximo ${brandLimit} perfil(is) de marca. Faça o upgrade para adicionar mais marcas!`)
-      return
-    }
-
-    setSaving(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const newBrandName = `Nova Marca ${brands.length + 1}`
-      
-      const { data: newBrand, error } = await supabase
-        .from('brands')
-        .insert({
-          user_id: user.id,
-          name: newBrandName,
-          primary_color: '#7C3AED',
-          secondary_color: '#06B6D4',
-          bg_color: '#0A0A0F',
-          font_display: 'Outfit',
-          font_body: 'Inter',
-          tagline: 'Seu Slogan',
-          tone: 'Profissional',
-          niche: '',
-          target_audience: '',
-          main_offer: '',
-          audience_pains: '',
-          content_goal: '',
-          is_default: brands.length === 0
-        })
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      if (newBrand) {
-        const updatedBrands = [...brands, newBrand]
-        setBrands(updatedBrands)
-        setSelectedBrandId(newBrand.id)
-        setBrandForm({
-          name: newBrand.name,
-          tagline: newBrand.tagline || '',
-          tone: newBrand.tone || 'Profissional',
-          primaryColor: newBrand.primary_color,
-          secondaryColor: newBrand.secondary_color,
-          bgColor: newBrand.bg_color,
-          fontDisplay: newBrand.font_display,
-          fontBody: newBrand.font_body,
-          logoUrl: newBrand.logo_url || '',
-          niche: newBrand.niche || '',
-          targetAudience: newBrand.target_audience || '',
-          mainOffer: newBrand.main_offer || '',
-          audiencePains: newBrand.audience_pains || '',
-          contentGoal: newBrand.content_goal || '',
-          isDefault: newBrand.is_default || false
-        })
-      }
-    } catch (err: any) {
-      console.error(err)
-      alert('Erro ao criar marca: ' + err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // Delete current brand
-  const handleDeleteBrand = async () => {
-    if (!selectedBrandId) return
-    if (brands.length <= 1) {
-      alert('Você deve manter pelo menos uma marca configurada.')
-      return
-    }
-
-    if (!confirm('Tem certeza que deseja excluir esta marca? Essa ação não pode ser desfeita.')) {
-      return
-    }
-
-    setSaving(true)
-    try {
-      const { error } = await supabase
-        .from('brands')
-        .delete()
-        .eq('id', selectedBrandId)
-
-      if (error) throw error
-
-      const updatedBrands = brands.filter(b => b.id !== selectedBrandId)
-      setBrands(updatedBrands)
-      
-      // Select the first remaining brand
-      const nextBrand = updatedBrands[0]
-      setSelectedBrandId(nextBrand.id)
-      setBrandForm({
-        name: nextBrand.name,
-        tagline: nextBrand.tagline || '',
-        tone: nextBrand.tone || 'Profissional',
-        primaryColor: nextBrand.primary_color,
-        secondaryColor: nextBrand.secondary_color,
-        bgColor: nextBrand.bg_color,
-        fontDisplay: nextBrand.font_display,
-        fontBody: nextBrand.font_body,
-        logoUrl: nextBrand.logo_url || '',
-        niche: nextBrand.niche || '',
-        targetAudience: nextBrand.target_audience || '',
-        mainOffer: nextBrand.main_offer || '',
-        audiencePains: nextBrand.audience_pains || '',
-        contentGoal: nextBrand.content_goal || '',
-        isDefault: nextBrand.is_default || false
+    const { data } = await supabase
+      .from('brands')
+      .insert({
+        user_id: user.id,
+        name: `Nova Marca ${brands.length + 1}`,
+        primary_color: '#a855f7',
+        secondary_color: '#22d3ee',
+        bg_color: '#09090b',
+        font_display: 'Outfit',
+        font_body: 'Inter',
+        tone: 'Profissional',
+        is_default: brands.length === 0,
       })
-    } catch (err: any) {
-      console.error(err)
-      alert('Erro ao deletar marca: ' + err.message)
-    } finally {
-      setSaving(false)
+      .select('*')
+      .single()
+
+    if (data) {
+      setBrands((current) => [...current, data])
+      selectBrand(data)
     }
   }
 
-  // Handle Logo Upload to Supabase Storage
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  async function uploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
     if (!file) return
+    setUploading(true)
 
-    setUploadingLogo(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${selectedBrandId || 'temp'}_${Date.now()}.${fileExt}`
-      const filePath = `${user.id}/brand_logos/${fileName}`
-
-      // Upload file to slide bucket (the only bucket with storage policies configured)
-      const { error: uploadError } = await supabase.storage
-        .from('slides')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        })
-
-      if (uploadError) throw uploadError
-
-      // Fetch public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('slides')
-        .getPublicUrl(filePath)
-
-      setBrandForm(prev => ({ ...prev, logoUrl: publicUrl }))
-    } catch (err: any) {
-      console.error(err)
-      alert('Erro ao enviar logo: ' + err.message)
-    } finally {
-      setUploadingLogo(false)
+    if (!user) {
+      setUploading(false)
+      return
     }
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/brand_logos/${selectedBrandId || 'brand'}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('slides').upload(path, file, { upsert: true })
+
+    if (!error) {
+      const { data } = supabase.storage.from('slides').getPublicUrl(path)
+      setForm((current) => ({ ...current, logoUrl: data.publicUrl }))
+    }
+    setUploading(false)
   }
 
-  // Save changes
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  async function saveBrand(event: React.FormEvent) {
+    event.preventDefault()
     setSaving(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    setSaved(false)
 
-      // If set as default, clear other default brands first
-      if (brandForm.isDefault) {
-        await supabase
-          .from('brands')
-          .update({ is_default: false })
-          .eq('user_id', user.id)
-      }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
 
-      const brandPayload = {
-        name: brandForm.name,
-        tagline: brandForm.tagline,
-        tone: brandForm.tone,
-        primary_color: brandForm.primaryColor,
-        secondary_color: brandForm.secondaryColor,
-        bg_color: brandForm.bgColor,
-        font_display: brandForm.fontDisplay,
-        font_body: brandForm.fontBody,
-        logo_url: brandForm.logoUrl,
-        niche: brandForm.niche,
-        target_audience: brandForm.targetAudience,
-        main_offer: brandForm.mainOffer,
-        audience_pains: brandForm.audiencePains,
-        content_goal: brandForm.contentGoal,
-        is_default: brandForm.isDefault
-      }
-
-      let error
-      if (selectedBrandId) {
-        // Update existing brand
-        const { error: updateError } = await supabase
-          .from('brands')
-          .update(brandPayload)
-          .eq('id', selectedBrandId)
-        error = updateError
-      } else {
-        // Insert new brand
-        const { error: insertError } = await supabase
-          .from('brands')
-          .insert({
-            ...brandPayload,
-            user_id: user.id
-          })
-        error = insertError
-      }
-
-      if (error) throw error
-
-      // Refresh brands list
-      const { data: brandsData } = await supabase
-        .from('brands')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-
-      if (brandsData) {
-        setBrands(brandsData)
-        // Keep active selection or set default if brand created
-        if (!selectedBrandId && brandsData.length > 0) {
-          const latestBrand = brandsData[brandsData.length - 1]
-          setSelectedBrandId(latestBrand.id)
-        }
-      }
-
-      alert('Brand Kit salvo com sucesso!')
-    } catch (err: any) {
-      console.error(err)
-      alert('Erro ao salvar marca: ' + err.message)
-    } finally {
-      setSaving(false)
+    if (form.isDefault) {
+      await supabase.from('brands').update({ is_default: false }).eq('user_id', user.id)
     }
+
+    const payload = {
+      user_id: user.id,
+      name: form.name,
+      tagline: form.tagline,
+      tone: form.tone,
+      primary_color: form.primaryColor,
+      secondary_color: form.secondaryColor,
+      bg_color: form.bgColor,
+      font_display: form.fontDisplay,
+      font_body: form.fontBody,
+      logo_url: form.logoUrl,
+      niche: form.niche,
+      target_audience: form.targetAudience,
+      main_offer: form.mainOffer,
+      audience_pains: form.audiencePains,
+      content_goal: form.contentGoal,
+      is_default: form.isDefault,
+    }
+
+    if (selectedBrandId) {
+      await supabase.from('brands').update(payload).eq('id', selectedBrandId)
+    } else {
+      const { data } = await supabase.from('brands').insert(payload).select('*').single()
+      if (data) setSelectedBrandId(data.id)
+    }
+
+    const { data: brandData } = await supabase.from('brands').select('*').eq('user_id', user.id).order('created_at', { ascending: true })
+    setBrands(brandData || [])
+    setSaving(false)
+    setSaved(true)
+  }
+
+  async function deleteBrand() {
+    if (!selectedBrandId || brands.length <= 1 || !confirm('Excluir este Brand Kit?')) return
+    await supabase.from('brands').delete().eq('id', selectedBrandId)
+    const next = brands.filter((brand) => brand.id !== selectedBrandId)
+    setBrands(next)
+    if (next[0]) selectBrand(next[0])
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--accent)]"></div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-300" />
       </div>
     )
   }
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-      
-      {/* Header & Subtext */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">
-            Brand Kit
-          </h1>
-          <p className="text-[var(--text-muted)] text-sm">
-            Configure a identidade visual da sua marca. A IA usará essas regras para gerar seus carrosséis de forma consistente.
-          </p>
-        </div>
+  const limit = profile?.plan === 'agency' ? 10 : profile?.plan === 'pro' ? 3 : 1
 
-        {/* Subscription Plan details */}
-        {profile && (
-          <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-2 text-right">
-            <div className="flex items-center gap-1.5 justify-end text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-0.5">
-              <Crown className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-              Plano {profile.plan === 'free' ? 'Gratuito' : profile.plan}
-            </div>
-            <div className="text-xs text-white">
-              Marcas utilizadas: <span className="font-bold">{brands.length} / {brandLimit}</span>
-            </div>
-          </div>
-        )}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase text-cyan-300">Identidade</p>
+          <h1 className="mt-2 text-4xl font-bold">Brand Kit</h1>
+          <p className="mt-2 max-w-2xl text-sm text-white/55">Defina marca, tom, paleta e contexto para o Studio gerar carrosséis consistentes.</p>
+        </div>
+        <div className="rounded-full border border-white/12 bg-white/[0.05] px-5 py-3 text-sm font-bold text-white/70">
+          {brands.length}/{limit} marcas
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* SIDEBAR: Brand list selector */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-4 space-y-3">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Suas Marcas</h3>
-              {isLimitReached && (
-                <span className="text-[9px] font-bold text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Lock className="w-2.5 h-2.5" /> Max
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              {brands.map((b) => (
-                <div
-                  key={b.id}
-                  onClick={() => handleSelectBrand(b.id)}
-                  className={`w-full p-3 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between ${
-                    selectedBrandId === b.id
-                      ? 'bg-[var(--brand-primary)]/10 border-[var(--brand-primary)] text-white'
-                      : 'bg-black/20 border-[var(--border-dark)] text-[var(--text-muted)] hover:border-white/20'
-                  }`}
-                >
-                  <div className="truncate pr-2">
-                    <div className="font-semibold text-xs truncate flex items-center gap-1.5">
-                      {b.name}
-                      {b.is_default && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Padrão"></span>
-                      )}
-                    </div>
-                    <div className="text-[9px] text-[var(--text-muted2)] truncate mt-0.5">{b.tagline || 'Sem slogan'}</div>
-                  </div>
-                  
-                  {/* Colors dot previews */}
-                  <div className="flex gap-1 shrink-0">
-                    <div className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: b.primary_color }}></div>
-                    <div className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: b.secondary_color }}></div>
-                  </div>
-                </div>
-              ))}
-
-              {brands.length === 0 && (
-                <div className="text-center py-6 text-xs text-[var(--text-muted2)]">
-                  Nenhuma marca criada.
-                </div>
-              )}
-            </div>
-
-            {/* Create brand kit button */}
-            <button
-              onClick={handleCreateBrand}
-              className={`w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                isLimitReached
-                  ? 'bg-white/5 border-dashed border-white/10 text-[var(--text-muted2)] cursor-not-allowed'
-                  : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20 cursor-pointer'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar Marca
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        <aside className="rounded-3xl border border-white/10 bg-[#191a1d] p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white/55">Suas marcas</h2>
+            <button onClick={createBrand} disabled={brands.length >= limit} className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white disabled:opacity-35">
+              <Plus className="h-4 w-4" />
             </button>
-
-            {isLimitReached && (
-              <p className="text-[10px] text-center text-yellow-400/80 leading-normal mt-2">
-                Quer gerenciar mais perfis de marcas? Faça o upgrade do seu plano.
-              </p>
-            )}
           </div>
-        </div>
+          <div className="space-y-2">
+            {brands.map((brand) => (
+              <button key={brand.id} onClick={() => selectBrand(brand)} className={`w-full rounded-2xl p-3 text-left transition ${selectedBrandId === brand.id ? 'bg-[#2f3135]' : 'hover:bg-white/[0.05]'}`}>
+                <span className="block truncate text-sm font-bold">{brand.name}</span>
+                <span className="mt-2 flex gap-1">
+                  <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.primary_color }} />
+                  <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.secondary_color }} />
+                  {brand.is_default && <span className="ml-auto text-[10px] font-bold text-cyan-300">PADRÃO</span>}
+                </span>
+              </button>
+            ))}
+            {brands.length === 0 && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-white/45">Nenhum kit criado ainda.</p>}
+          </div>
+        </aside>
 
-        {/* MAIN PANEL: Active Form Editing */}
-        <div className="lg:col-span-3">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Identidade Básica */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
-                <Sparkles className="w-5 h-5 text-[var(--accent)]" />
-                <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
-                  Identidade da Marca
-                </h2>
-              </div>
+        <form onSubmit={saveBrand} className="space-y-5">
+          <section className="rounded-3xl border border-white/10 bg-[#191a1d] p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-cyan-300" />
+              <h2 className="text-xl font-bold">Identidade da marca</h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nome da marca" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <input value={form.tagline} onChange={(event) => setForm({ ...form, tagline: event.target.value })} placeholder="Slogan" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <input value={form.niche} onChange={(event) => setForm({ ...form, niche: event.target.value })} placeholder="Nicho" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <input value={form.targetAudience} onChange={(event) => setForm({ ...form, targetAudience: event.target.value })} placeholder="Público-alvo" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <input value={form.mainOffer} onChange={(event) => setForm({ ...form, mainOffer: event.target.value })} placeholder="Oferta principal" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <input value={form.contentGoal} onChange={(event) => setForm({ ...form, contentGoal: event.target.value })} placeholder="Objetivo do conteúdo" className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50" />
+              <textarea value={form.audiencePains} onChange={(event) => setForm({ ...form, audiencePains: event.target.value })} placeholder="Dores e desejos do público" className="min-h-28 rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none focus:border-cyan-300/50 md:col-span-2" />
+            </div>
+          </section>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Nome da Marca / @</label>
-                  <input 
-                    type="text" 
-                    value={brandForm.name}
-                    onChange={e => setBrandForm({...brandForm, name: e.target.value})}
-                    placeholder="Ex: @suamarca"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Slogan / Subtítulo</label>
-                  <input 
-                    type="text" 
-                    value={brandForm.tagline}
-                    onChange={e => setBrandForm({...brandForm, tagline: e.target.value})}
-                    placeholder="Ex: Criando conteúdos virais"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                  />
-                </div>
+          <section className="rounded-3xl border border-white/10 bg-[#191a1d] p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <Palette className="h-5 w-5 text-purple-300" />
+              <h2 className="text-xl font-bold">Visual</h2>
+            </div>
+            <div className="mb-5 grid gap-3 sm:grid-cols-4">
+              {presets.map((preset) => (
+                <button key={preset.name} type="button" onClick={() => setForm({ ...form, primaryColor: preset.primary, secondaryColor: preset.secondary, bgColor: preset.bg })} className="rounded-2xl border border-white/10 bg-black/20 p-3 text-left hover:bg-white/[0.05]">
+                  <span className="mb-3 flex h-8 overflow-hidden rounded-xl">
+                    <i className="flex-1" style={{ background: preset.bg }} />
+                    <i className="w-8" style={{ background: preset.primary }} />
+                    <i className="w-8" style={{ background: preset.secondary }} />
+                  </span>
+                  <span className="text-xs font-bold text-white/70">{preset.name}</span>
+                </button>
+              ))}
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2 text-[var(--text-muted)]">Logotipo da Marca</label>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 border border-dashed border-[var(--border-dark)] rounded-xl bg-[#ffffff02] hover:bg-[#ffffff05] transition-colors relative">
-                    <div className="w-14 h-14 shrink-0 rounded-full bg-gradient-to-tr from-[var(--brand-primary)] to-[var(--accent)] p-[1px] flex items-center justify-center">
-                      <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
-                        {brandForm.logoUrl ? (
-                          <img src={brandForm.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
-                        ) : (
-                          <span className="text-white font-extrabold text-lg">
-                            {brandForm.name ? brandForm.name.substring(0, 2).toUpperCase() : 'SM'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 space-y-1">
-                      <div className="text-xs font-semibold text-white flex items-center gap-2">
-                        {uploadingLogo ? (
-                          <><RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--brand-primary)]" /> Enviando...</>
-                        ) : (
-                          <><Upload className="w-3.5 h-3.5" /> Enviar arquivo de imagem</>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-[var(--text-muted2)] leading-relaxed">
-                        Use uma logo em PNG ou SVG com fundo transparente. Evite JPG ou imagens com fundo branco/colorido. Limite de 2MB.
-                      </div>
-                    </div>
-
-                    <input
-                      type="file"
-                      accept="image/png,image/svg+xml,image/webp"
-                      onChange={handleLogoUpload}
-                      disabled={uploadingLogo}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </div>
-
-                  {brandForm.logoUrl && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={brandForm.logoUrl}
-                        readOnly
-                        className="flex-1 bg-black/40 border border-[var(--border-dark)] rounded-lg px-3 py-1.5 text-[10px] text-[var(--text-muted)] font-mono truncate"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setBrandForm(prev => ({ ...prev, logoUrl: '' }))}
-                        className="text-[10px] text-red-400 hover:text-red-300 font-medium px-2 py-1.5 rounded bg-red-400/5 hover:bg-red-400/10 border border-red-400/10 transition-all shrink-0"
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* Contexto Estratégico */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
-                <MessageSquare className="w-5 h-5 text-[var(--accent)]" />
-                <div>
-                  <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
-                    Contexto EstratÃ©gico
-                  </h2>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">
-                    Essas informaÃ§Ãµes ajudam a IA a sugerir temas e briefs mais alinhados ao cliente.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Nicho / Segmento</label>
-                  <input
-                    type="text"
-                    value={brandForm.niche}
-                    onChange={e => setBrandForm({ ...brandForm, niche: e.target.value })}
-                    placeholder="Ex: ClÃ­nica odontolÃ³gica premium"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">PÃºblico-alvo</label>
-                  <input
-                    type="text"
-                    value={brandForm.targetAudience}
-                    onChange={e => setBrandForm({ ...brandForm, targetAudience: e.target.value })}
-                    placeholder="Ex: Adultos que querem melhorar o sorriso"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Oferta principal</label>
-                  <input
-                    type="text"
-                    value={brandForm.mainOffer}
-                    onChange={e => setBrandForm({ ...brandForm, mainOffer: e.target.value })}
-                    placeholder="Ex: AvaliaÃ§Ã£o para lentes de contato dental"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Objetivo do conteÃºdo</label>
-                  <input
-                    type="text"
-                    value={brandForm.contentGoal}
-                    onChange={e => setBrandForm({ ...brandForm, contentGoal: e.target.value })}
-                    placeholder="Ex: Gerar agendamentos pelo direct"
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Dores e desejos do pÃºblico</label>
-                  <textarea
-                    value={brandForm.audiencePains}
-                    onChange={e => setBrandForm({ ...brandForm, audiencePains: e.target.value })}
-                    placeholder="Ex: medo de procedimento caro, vergonha de sorrir, inseguranÃ§a com atendimento, desejo por resultado natural."
-                    className="w-full min-h-28 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm resize-none leading-relaxed"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Cores */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
-                <Palette className="w-5 h-5 text-[var(--brand-primary)]" />
-                <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
-                  Paleta de Cores da Marca
-                </h2>
-              </div>
-
-              <div className="mb-8">
-                <label className="block text-sm font-medium mb-3 text-[var(--text-muted)]">Paletas Prontas (Clique para aplicar)</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {PRESET_PALETTES.map(palette => (
-                    <div
-                      key={palette.name}
-                      onClick={() => setBrandForm({ ...brandForm, primaryColor: palette.primary, secondaryColor: palette.secondary, bgColor: palette.bg })}
-                      className="p-2 rounded-xl cursor-pointer border border-[var(--border-dark)] hover:border-white/20 transition-all bg-[#00000033]"
-                    >
-                      <div className="flex gap-1 mb-2 h-6">
-                        <div className="flex-1 rounded-l-md border border-white/5" style={{ backgroundColor: palette.bg }}></div>
-                        <div className="w-4 h-full border border-white/5" style={{ backgroundColor: palette.primary }}></div>
-                        <div className="w-4 h-full rounded-r-md border border-white/5" style={{ backgroundColor: palette.secondary }}></div>
-                      </div>
-                      <div className="text-[9px] text-center text-[var(--text-muted2)] truncate font-semibold">
-                        {palette.name}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Cor Primária</label>
+            <div className="grid gap-4 md:grid-cols-3">
+              {colorFields.map((field) => (
+                <label key={field.key} className="grid gap-2 text-sm font-semibold text-white/60">
+                  {field.label}
                   <div className="flex gap-3">
-                    <input 
-                      type="color" 
-                      value={brandForm.primaryColor}
-                      onChange={e => setBrandForm({...brandForm, primaryColor: e.target.value})}
-                      className="w-12 h-12 rounded-lg cursor-pointer bg-transparent border-0 p-0"
-                    />
-                    <input 
-                      type="text" 
-                      value={brandForm.primaryColor}
-                      onChange={e => setBrandForm({...brandForm, primaryColor: e.target.value})}
-                      className="flex-1 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-2 text-white font-mono text-sm"
-                    />
+                    <input type="color" value={form[field.key]} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })} className="h-12 w-12 rounded-xl bg-transparent" />
+                    <input value={form[field.key]} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 font-mono outline-none" />
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Cor Secundária</label>
-                  <div className="flex gap-3">
-                    <input 
-                      type="color" 
-                      value={brandForm.secondaryColor}
-                      onChange={e => setBrandForm({...brandForm, secondaryColor: e.target.value})}
-                      className="w-12 h-12 rounded-lg cursor-pointer bg-transparent border-0 p-0"
-                    />
-                    <input 
-                      type="text" 
-                      value={brandForm.secondaryColor}
-                      onChange={e => setBrandForm({...brandForm, secondaryColor: e.target.value})}
-                      className="flex-1 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-2 text-white font-mono text-sm"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Cor de Fundo</label>
-                  <div className="flex gap-3">
-                    <input 
-                      type="color" 
-                      value={brandForm.bgColor}
-                      onChange={e => setBrandForm({...brandForm, bgColor: e.target.value})}
-                      className="w-12 h-12 rounded-lg cursor-pointer bg-transparent border-0 p-0"
-                    />
-                    <input 
-                      type="text" 
-                      value={brandForm.bgColor}
-                      onChange={e => setBrandForm({...brandForm, bgColor: e.target.value})}
-                      className="flex-1 bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-2 text-white font-mono text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Tipografia */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
-                <Type className="w-5 h-5 text-[var(--accent)]" />
-                <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
-                  Tipografia Recomendada
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Fonte para Títulos</label>
-                  <select 
-                    value={brandForm.fontDisplay}
-                    onChange={e => setBrandForm({...brandForm, fontDisplay: e.target.value})}
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--brand-primary)] select-field text-sm"
-                  >
-                    <option value="Outfit">Outfit</option>
-                    <option value="Space Grotesk">Space Grotesk</option>
-                    <option value="Syne">Syne</option>
-                    <option value="Montserrat">Montserrat</option>
-                    <option value="Playfair Display">Playfair Display</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-[var(--text-muted)]">Fonte para Corpo de Texto</label>
-                  <select 
-                    value={brandForm.fontBody}
-                    onChange={e => setBrandForm({...brandForm, fontBody: e.target.value})}
-                    className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--brand-primary)] select-field text-sm"
-                  >
-                    <option value="Inter">Inter</option>
-                    <option value="DM Sans">DM Sans</option>
-                    <option value="Roboto">Roboto</option>
-                    <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-                    <option value="Lora">Lora</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-8 p-6 rounded-xl border border-[var(--border-dark)] bg-black/30">
-                <div className="text-xs text-[var(--text-muted2)] mb-4 font-semibold uppercase tracking-wider flex items-center justify-between">
-                  Preview Dinâmico
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: brandForm.primaryColor }}></div>
-                    <div className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: brandForm.secondaryColor }}></div>
-                  </div>
-                </div>
-                <div className="p-6 rounded-xl border border-white/5 shadow-2xl" style={{ backgroundColor: brandForm.bgColor }}>
-                  <h3 style={{ fontFamily: brandForm.fontDisplay, color: brandForm.primaryColor }} className="text-3xl font-bold mb-3">
-                    A Arte de Criar Conteúdo
-                  </h3>
-                  <p style={{ fontFamily: brandForm.fontBody }} className="text-[var(--text-muted)] text-sm leading-relaxed">
-                    Descubra os segredos que os maiores criadores usam para viralizar todos os dias. 
-                    Com a <span style={{ color: brandForm.secondaryColor, fontWeight: 'bold' }}>estratégia certa</span>, seu próximo post será um sucesso garantido.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Comunicação */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-dark)] pb-4">
-                <MessageSquare className="w-5 h-5 text-[var(--brand-primary)]" />
-                <h2 className="text-xl font-[family-name:var(--font-bricolage)] font-semibold text-white">
-                  Comunicação e Tom de Voz
-                </h2>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-3 text-[var(--text-muted)]">Como a IA deve redigir os textos da marca?</label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  {['Profissional', 'Educativo', 'Descontraído', 'Urgente', 'Motivacional'].map((tone) => (
-                    <div 
-                      key={tone}
-                      onClick={() => setBrandForm({...brandForm, tone})}
-                      className={`p-3 text-center rounded-xl cursor-pointer transition-all border text-xs font-semibold ${
-                        brandForm.tone === tone 
-                          ? 'bg-[var(--brand-primary)]/20 border-[var(--brand-primary)] text-white' 
-                          : 'bg-[#00000033] border-[var(--border-dark)] text-[var(--text-muted)] hover:border-white/30'
-                      }`}
-                    >
-                      {tone}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Opções e Configuração Padrão */}
-            <section className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="isDefault"
-                  checked={brandForm.isDefault}
-                  onChange={e => setBrandForm({ ...brandForm, isDefault: e.target.checked })}
-                  className="w-4 h-4 rounded border-[var(--border-dark)] bg-black/40 text-[var(--brand-primary)] focus:ring-[var(--brand-primary)] cursor-pointer"
-                />
-                <label htmlFor="isDefault" className="text-sm font-medium text-white cursor-pointer select-none">
-                  Definir este Brand Kit como padrão para novas criações de carrossel
                 </label>
-              </div>
-            </section>
+              ))}
+            </div>
 
-            {/* Action buttons (Save / Delete) */}
-            <div className="flex justify-between items-center pt-4">
-              <div>
-                {brands.length > 1 && (
-                  <button 
-                    type="button" 
-                    onClick={handleDeleteBrand}
-                    disabled={saving}
-                    className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-5 py-3 rounded-xl border border-red-500/20 hover:border-red-500/30 text-sm font-semibold transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" /> Excluir Marca
-                  </button>
-                )}
-              </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <select value={form.fontDisplay} onChange={(event) => setForm({ ...form, fontDisplay: event.target.value })} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none">
+                {['Outfit', 'Space Grotesk', 'Syne', 'Montserrat', 'Playfair Display'].map((font) => <option key={font}>{font}</option>)}
+              </select>
+              <select value={form.fontBody} onChange={(event) => setForm({ ...form, fontBody: event.target.value })} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 outline-none">
+                {['Inter', 'DM Sans', 'Roboto', 'Plus Jakarta Sans', 'Lora'].map((font) => <option key={font}>{font}</option>)}
+              </select>
+            </div>
 
-              <button 
-                type="submit" 
-                disabled={saving || uploadingLogo}
-                className="btn-primary flex items-center gap-2 font-bold px-6 py-3 cursor-pointer shadow-[0_0_20px_rgba(124,58,237,0.25)] hover:shadow-[0_0_25px_rgba(124,58,237,0.4)] disabled:opacity-50"
-              >
-                {saving ? (
-                  <><RefreshCw className="w-5 h-5 animate-spin" /> Salvando...</>
-                ) : (
-                  <><Save className="w-5 h-5" /> Salvar Alterações</>
-                )}
+            <label className="mt-5 flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-white/15 bg-black/20 p-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold">Logo da marca</span>
+                <span className="block truncate text-xs text-white/45">{form.logoUrl || 'Enviar PNG, SVG ou WebP'}</span>
+              </span>
+              <input type="file" accept="image/png,image/svg+xml,image/webp" onChange={uploadLogo} className="hidden" />
+            </label>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-[#191a1d] p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <Type className="h-5 w-5 text-emerald-300" />
+              <h2 className="text-xl font-bold">Tom de voz</h2>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-5">
+              {['Profissional', 'Educativo', 'Descontraído', 'Urgente', 'Motivacional'].map((tone) => (
+                <button key={tone} type="button" onClick={() => setForm({ ...form, tone })} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${form.tone === tone ? 'border-cyan-300/50 bg-cyan-300/10 text-white' : 'border-white/10 bg-black/20 text-white/55'}`}>
+                  {tone}
+                </button>
+              ))}
+            </div>
+            <label className="mt-5 flex items-center gap-3 text-sm font-semibold text-white/70">
+              <input type="checkbox" checked={form.isDefault} onChange={(event) => setForm({ ...form, isDefault: event.target.checked })} />
+              Usar como Brand Kit padrão
+            </label>
+          </section>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button type="button" onClick={deleteBrand} disabled={brands.length <= 1} className="inline-flex items-center gap-2 rounded-full border border-red-400/20 px-5 py-3 text-sm font-bold text-red-200 disabled:opacity-35">
+              <Trash2 className="h-4 w-4" /> Excluir
+            </button>
+            <div className="flex items-center gap-3">
+              {saved && <span className="inline-flex items-center gap-2 text-sm font-bold text-emerald-300"><Check className="h-4 w-4" /> Salvo</span>}
+              <button disabled={saving || uploading} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvar Brand Kit
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   )
 }
-
