@@ -1,24 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
-import { Mail, CheckCircle2, AlertCircle, Info } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Info, Mail } from 'lucide-react'
 
 export default function AlterarEmailPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const supabase = createClient()
 
-  const handleUpdateEmail = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const handleUpdateEmail = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     setError(null)
     setLoading(true)
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError('Por favor, insira um e-mail válido.')
@@ -27,14 +22,17 @@ export default function AlterarEmailPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({ email })
-      
-      if (error) {
-        setError(error.message)
-      } else {
-        setSuccess(true)
+      const { createClient } = await import('@/utils/supabase/client')
+      const supabase = createClient()
+      const { error: updateError } = await supabase.auth.updateUser({ email })
+
+      if (updateError) {
+        setError(updateError.message)
+        return
       }
-    } catch (err) {
+
+      setSuccess(true)
+    } catch {
       setError('Ocorreu um erro ao solicitar a alteração de e-mail. Tente novamente.')
     } finally {
       setLoading(false)
@@ -42,39 +40,34 @@ export default function AlterarEmailPage() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto py-12 px-4">
-      {/* Glow Effects */}
-      <div className="hero-glow" style={{ top: '10%', left: '30%', opacity: 0.3 }}></div>
-
-      <div className="relative z-10 text-center mb-8">
-        <div className="inline-flex p-3 rounded-2xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] border border-[var(--brand-primary)]/20 mb-4">
-          <Mail className="w-8 h-8" />
+    <div className="mx-auto w-full max-w-lg px-4 py-12">
+      <div className="relative z-10 mb-8 text-center">
+        <div className="mb-4 inline-flex rounded-2xl border border-[var(--brand-primary)]/20 bg-[var(--brand-primary)]/10 p-3 text-[var(--brand-primary)]">
+          <Mail className="h-8 w-8" />
         </div>
-        <h1 className="text-3xl font-[family-name:var(--font-bricolage)] font-bold text-white mb-2">
-          Alterar E-mail
-        </h1>
-        <p className="text-[var(--text-muted)] text-sm">
+        <h1 className="mb-2 text-3xl font-bold text-white">Alterar E-mail</h1>
+        <p className="text-sm text-[var(--text-muted)]">
           Altere seu endereço de e-mail de acesso e cobrança na plataforma.
         </p>
       </div>
 
-      <div className="bg-[var(--surface-dark)] border border-[var(--border-dark)] rounded-2xl p-6 sm:p-8 shadow-xl backdrop-blur-xl relative z-10">
+      <div className="relative z-10 rounded-2xl border border-[var(--border-dark)] bg-[var(--surface-dark)] p-6 shadow-xl backdrop-blur-xl sm:p-8">
         {success ? (
-          <div className="text-center py-6 space-y-4">
-            <div className="inline-flex p-3 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2 animate-bounce">
-              <CheckCircle2 className="w-12 h-12" />
+          <div className="space-y-4 py-6 text-center">
+            <div className="mb-2 inline-flex animate-bounce rounded-full border border-emerald-500/20 bg-emerald-500/10 p-3 text-emerald-400">
+              <CheckCircle2 className="h-12 w-12" />
             </div>
             <h3 className="text-xl font-bold text-white">Solicitação enviada!</h3>
-            <p className="text-[var(--text-muted)] text-sm leading-relaxed max-w-sm mx-auto">
-              Para sua total segurança, enviamos e-mails de confirmação. 
-              <strong> Você precisará clicar no link enviado para o seu e-mail atual E para o seu novo e-mail</strong> para validar a alteração.
+            <p className="mx-auto max-w-sm text-sm leading-relaxed text-[var(--text-muted)]">
+              Para sua segurança, enviamos e-mails de confirmação para o endereço atual e para o novo endereço.
             </p>
-            <button 
+            <button
+              type="button"
               onClick={() => {
                 setSuccess(false)
                 setEmail('')
               }}
-              className="mt-4 text-xs font-semibold px-4 py-2 rounded-xl bg-[#ffffff0a] text-white border border-[var(--border-dark)] hover:bg-[#ffffff14] transition-colors"
+              className="mt-4 rounded-xl border border-[var(--border-dark)] bg-[#ffffff0a] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#ffffff14]"
             >
               Fazer nova solicitação
             </button>
@@ -82,40 +75,38 @@ export default function AlterarEmailPage() {
         ) : (
           <form onSubmit={handleUpdateEmail} className="space-y-5">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Security Information Box */}
-            <div className="bg-blue-500/5 border border-blue-500/15 text-blue-400/90 p-4 rounded-xl text-xs space-y-2 leading-relaxed">
-              <div className="flex items-center gap-2 font-semibold text-white mb-1 text-sm">
-                <Info className="w-4.5 h-4.5 text-[var(--accent)] shrink-0" />
+            <div className="space-y-2 rounded-xl border border-blue-500/15 bg-blue-500/5 p-4 text-xs leading-relaxed text-blue-400/90">
+              <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                <Info className="h-4 w-4 shrink-0 text-[var(--accent)]" />
                 <span>Medida de Segurança Ativa</span>
               </div>
               <p>
-                O Supabase exige a confirmação nos dois endereços (no atual e no novo). 
-                A alteração só será consolidada após ambos os links serem clicados.
+                O Supabase exige confirmação nos dois endereços. A alteração só será concluída após ambos os links serem clicados.
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-[var(--text-muted)]">Novo E-mail</label>
-              <input 
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-medium text-[var(--text-muted)]">Novo E-mail</span>
+              <input
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#00000033] border border-[var(--border-dark)] rounded-xl px-4 py-3 text-white placeholder:text-[var(--text-muted2)] focus:outline-none focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] transition-all text-sm"
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full rounded-xl border border-[var(--border-dark)] bg-[#00000033] px-4 py-3 text-sm text-white transition-all placeholder:text-[var(--text-muted2)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
                 placeholder="novo.email@exemplo.com"
               />
-            </div>
+            </label>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
-              className="w-full mt-4 flex justify-center py-3.5 rounded-xl font-semibold bg-gradient-to-r from-[var(--brand-primary)] to-[var(--accent)] text-white hover:brightness-110 transition-all shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 flex w-full justify-center rounded-xl bg-gradient-to-r from-[var(--brand-primary)] to-[var(--accent)] py-3.5 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? 'Solicitando alteração...' : 'Confirmar e Alterar E-mail'}
             </button>

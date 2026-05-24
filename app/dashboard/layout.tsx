@@ -29,13 +29,13 @@ const quickLinks = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
 
   useEffect(() => {
     async function fetchProfile() {
+      const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -64,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   async function handleLogout() {
+    const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -104,6 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h2 className="text-sm font-bold text-white/55">Suas marcas</h2>
             <button
               onClick={async () => {
+                const supabase = createClient()
                 const {
                   data: { user },
                 } = await supabase.auth.getUser()
