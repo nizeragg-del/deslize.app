@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowUp,
   BarChart3,
   Calendar,
+  ChevronDown,
   ChevronRight,
   CreditCard,
-  FolderOpen,
+  Folder,
   Gauge,
   KeyRound,
   Loader2,
@@ -49,6 +50,12 @@ const maxCreditsByPlan: Record<string, number> = {
   agency: 200,
 }
 
+const suggestions = [
+  'Ideias de posts para vender mais no Instagram',
+  'Carrossel educativo para leads frios',
+  'Sequência premium para lançamento',
+]
+
 export default function DashboardHome() {
   const router = useRouter()
   const supabase = createClient()
@@ -74,10 +81,10 @@ export default function DashboardHome() {
   const isFree = (profile?.plan || 'free') === 'free'
 
   useEffect(() => {
-    loadHub()
+    loadDashboard()
   }, [])
 
-  async function loadHub() {
+  async function loadDashboard() {
     setLoading(true)
     const {
       data: { user },
@@ -174,254 +181,249 @@ export default function DashboardHome() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#1f2022] text-white">
-        <Loader2 className="h-7 w-7 animate-spin text-[var(--accent)]" />
+      <div className="flex min-h-screen items-center justify-center bg-[#101113] text-white">
+        <Loader2 className="h-7 w-7 animate-spin text-cyan-300" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#202124] text-white">
-      <header className="flex h-[70px] items-center justify-between border-b border-white/10 px-6">
+    <div className="min-h-screen overflow-x-hidden bg-[#101113] text-white">
+      <header className="flex h-20 items-center justify-between border-b border-white/10 px-8">
         <div className="flex items-center gap-3">
-          <Logo />
-          <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-bold text-white/80">BETA</span>
+          <Logo width={dashboardMode ? 132 : 46} />
+          <span className="rounded-md bg-white/[0.12] px-2 py-1 text-[11px] font-bold text-white/65">BETA</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/planos" className="hidden rounded-full px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 sm:inline-flex">
+
+        <div className="flex items-center gap-5">
+          <Link href="/dashboard/planos" className="text-lg text-white/90 hover:text-white">
             Planos
           </Link>
-          <Link href="/dashboard/perfil" className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-emerald-700 text-sm font-bold">
+          <button
+            onClick={() => setDashboardMode((current) => !current)}
+            className={`inline-flex items-center gap-3 rounded-full border px-5 py-3 text-base font-bold transition ${
+              dashboardMode
+                ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300'
+                : 'border-white/15 bg-white/[0.03] text-white hover:bg-white/[0.07]'
+            }`}
+          >
+            <KeyRound className="h-5 w-5" />
+            {dashboardMode ? 'Dashboard ativo' : 'Ativar dashboard'}
+          </button>
+          <Link href="/dashboard/perfil" className="h-12 w-12 overflow-hidden rounded-full border border-white/25 bg-[#25282d]">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.name || 'Perfil'} className="h-full w-full object-cover" />
             ) : (
-              (profile?.name || 'D').slice(0, 1).toUpperCase()
+              <span className="flex h-full w-full items-center justify-center text-sm font-bold">
+                {(profile?.name || 'D').slice(0, 1).toUpperCase()}
+              </span>
             )}
           </Link>
-          <button onClick={logout} className="flex h-10 w-10 items-center justify-center rounded-full text-white/70 hover:bg-white/10">
-            <LogOut className="h-4 w-4" />
+          <button onClick={logout} className="text-white/55 hover:text-white" aria-label="Sair">
+            <LogOut className="h-7 w-7" />
           </button>
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-70px)] grid-cols-1 lg:grid-cols-[370px_1fr]">
-        <aside className="border-r border-white/10 bg-[#1b1c1e] p-3">
-          <div className="rounded-3xl border border-white/10 bg-[#1a1b1d] p-4">
-            <div className="mb-4 grid grid-cols-2 rounded-full bg-black/20 p-1">
-              <button className="rounded-full bg-[#3a3d40] px-4 py-3 text-sm font-bold">
-                Meus projetos
-              </button>
-              <button className="rounded-full px-4 py-3 text-sm font-bold text-white/55">
-                Compartilhados
-              </button>
-            </div>
+      <div className="grid min-h-[calc(100vh-80px)] grid-cols-[350px_1fr]">
+        <aside className="border-r border-white/10 bg-[#101113] p-5">
+          <div className="mb-8 grid grid-cols-2 rounded-xl bg-[#1b1c1f] p-1">
+            <button className="rounded-lg bg-[#3a3b3f] px-4 py-3 text-base font-bold">Meus projetos</button>
+            <button className="rounded-lg px-4 py-3 text-base font-bold text-white/55">Compartilhados</button>
+          </div>
 
-            <label className="mb-6 flex items-center gap-2 rounded-full bg-[#2d3033] px-4 py-3 text-sm text-white/60">
-              <Search className="h-4 w-4" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Pesquisar projetos"
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-white/45"
-              />
-            </label>
+          <label className="mb-8 flex h-[52px] items-center gap-3 rounded-xl bg-[#1b1c1f] px-4 text-lg text-white/55">
+            <Search className="h-5 w-5" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Pesquisar projetos"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-white/45"
+            />
+          </label>
 
-            <div className="space-y-5">
-              <button
-                onClick={() => createProject(false)}
-                disabled={creating}
-                className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-white/15 px-3 py-3 text-left text-sm font-bold text-white/85 hover:bg-white/5 disabled:opacity-60"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                  {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                </span>
-                Criar projeto vazio
-              </button>
+          <button
+            onClick={() => createProject(false)}
+            disabled={creating}
+            className="mb-8 flex h-[74px] w-full items-center justify-center gap-4 rounded-xl border border-dashed border-white/25 text-lg font-bold hover:bg-white/[0.04] disabled:opacity-60"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/12">
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </span>
+            Criar projeto vazio
+          </button>
 
-              <div>
-                <h2 className="mb-3 text-sm font-bold text-white/70">Recentes</h2>
-                <div className="space-y-2">
-                  {filteredProjects.length === 0 ? (
-                    <p className="rounded-2xl bg-white/[0.03] p-4 text-sm text-white/50">
-                      Nenhum projeto ainda. Crie seu primeiro carrossel pelo chat.
-                    </p>
-                  ) : (
-                    filteredProjects.map((project) => (
-                      <Link
-                        key={project.id}
-                        href={`/dashboard/studio?project=${project.id}`}
-                        className="group flex items-center gap-3 rounded-2xl p-2 hover:bg-white/[0.06]"
-                      >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2d3033] text-[var(--accent)]">
-                          <FolderOpen className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="truncate text-sm font-bold">{project.name}</h3>
-                          <p className="text-[11px] text-white/50">
-                            {project.carousels?.length || 0} carrossel(is) · {new Date(project.created_at).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white" />
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+          <h2 className="mb-5 text-sm font-bold uppercase tracking-wide text-white/50">Recentes</h2>
+          <div className="space-y-4">
+            {filteredProjects.length === 0 ? (
+              <p className="rounded-xl bg-white/[0.04] p-4 text-sm text-white/45">Nenhum projeto ainda.</p>
+            ) : (
+              filteredProjects.map((project) => (
+                <Link key={project.id} href={`/dashboard/studio?project=${project.id}`} className="group flex items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#202126] text-purple-400">
+                    <Folder className="h-6 w-6" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-lg font-semibold">{project.name}</span>
+                    <span className="block truncate text-sm text-white/50">
+                      {project.carousels?.length || 0} carrossel(is) • {new Date(project.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  </span>
+                  {dashboardMode && <ChevronRight className="h-5 w-5 text-white/35 transition group-hover:translate-x-1 group-hover:text-white" />}
+                </Link>
+              ))
+            )}
           </div>
         </aside>
 
-        <main className="relative overflow-hidden p-6 lg:p-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12)_1px,transparent_1.2px)] bg-[length:34px_34px] opacity-20" />
-          <div className="relative mx-auto max-w-6xl">
-            <div className="mb-10 flex items-center justify-end">
-              <button
-                onClick={() => setDashboardMode((current) => !current)}
-                className={`flex items-center gap-3 rounded-full border px-4 py-3 text-sm font-bold transition ${
-                  dashboardMode
-                    ? 'border-[var(--accent)]/40 bg-[var(--accent)]/15 text-white'
-                    : 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10'
-                }`}
-              >
-                <KeyRound className="h-4 w-4" />
-                {dashboardMode ? 'Dashboard ativo' : 'Ativar dashboard'}
-              </button>
-            </div>
+        <main className="relative overflow-hidden bg-[#111214]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.14)_1px,transparent_1.3px)] bg-[length:30px_30px] opacity-18" />
 
-            {!dashboardMode ? (
-              <section className="pt-10">
-                <h1 className="mb-7 max-w-4xl text-5xl font-semibold tracking-normal text-white md:text-6xl">
-                  Olá! O que vamos transformar em carrossel hoje?
-                </h1>
+          {!dashboardMode ? (
+            <section className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-[1120px] flex-col px-8 pb-8 pt-16">
+              <h1 className="max-w-[930px] text-[76px] font-extrabold leading-[0.98] tracking-normal text-white">
+                Olá! O que vamos transformar em carrossel hoje?
+              </h1>
 
-                <div className="rounded-[28px] border border-[var(--brand-primary)]/35 bg-[#1b1c1e]/95 p-4 shadow-[0_0_70px_rgba(124,58,237,0.16)]">
-                  <textarea
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    placeholder="Ex: crie um carrossel com 5 erros que fazem uma clínica perder pacientes no Instagram..."
-                    className="min-h-44 w-full resize-none bg-transparent px-2 py-2 text-lg text-white outline-none placeholder:text-white/45"
-                  />
-                  <div className="flex flex-col justify-between gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button className="rounded-full bg-white/10 px-3 py-2 text-sm text-white/75">Carrossel</button>
-                      <select
-                        value={selectedBrandId}
-                        onChange={(event) => setSelectedBrandId(event.target.value)}
-                        className="rounded-full border border-white/10 bg-[#2d3033] px-3 py-2 text-sm text-white outline-none"
-                      >
-                        {brands.length === 0 && <option value="">Brand Kit padrão</option>}
-                        {brands.map((brand) => (
-                          <option key={brand.id} value={brand.id}>
-                            {brand.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      onClick={() => createProject(true)}
-                      disabled={!prompt.trim() || creating}
-                      className="flex h-12 w-12 items-center justify-center self-end rounded-full bg-white text-black shadow-[0_0_34px_rgba(255,255,255,0.25)] disabled:opacity-40"
-                      aria-label="Criar projeto"
+              <div className="mt-16 rounded-[20px] border border-white/12 bg-[#17181b]/95 p-8 shadow-[0_0_60px_rgba(0,0,0,0.24)]">
+                <textarea
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  placeholder="Ex: crie um carrossel com 5 erros que fazem uma clínica perder pacientes no Instagram..."
+                  className="min-h-[205px] w-full resize-none bg-transparent text-2xl text-white outline-none placeholder:text-white/32"
+                />
+                <div className="flex items-center justify-between border-t border-white/15 pt-7">
+                  <div className="flex items-center gap-3">
+                    <button className="rounded-full border border-white/15 bg-white/[0.06] px-5 py-2 text-base font-semibold">Carrossel</button>
+                    <select
+                      value={selectedBrandId}
+                      onChange={(event) => setSelectedBrandId(event.target.value)}
+                      className="rounded-full border border-white/15 bg-white/[0.06] px-5 py-2 text-base font-semibold text-white outline-none"
                     >
-                      {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUp className="h-5 w-5" />}
-                    </button>
+                      {brands.length === 0 && <option value="">Brand Kit</option>}
+                      {brands.map((brand) => (
+                        <option key={brand.id} value={brand.id} className="bg-[#111214]">
+                          {brand.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  <button
+                    onClick={() => createProject(true)}
+                    disabled={!prompt.trim() || creating}
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-[#414348] text-white disabled:opacity-45"
+                    aria-label="Criar carrossel"
+                  >
+                    {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUp className="h-7 w-7" />}
+                  </button>
                 </div>
+              </div>
 
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {[
-                    'Ideias de posts para vender mais no Instagram',
-                    'Carrossel educativo para leads frios',
-                    'Sequência premium para lançamento',
-                  ].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setPrompt(suggestion)}
-                      className="rounded-full border border-white/12 bg-white/7 px-4 py-2 text-sm font-semibold text-white/75 hover:bg-white/12"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
+              <div className="mt-8 flex flex-wrap gap-4">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setPrompt(suggestion)}
+                    className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-3 text-base font-semibold text-white hover:bg-white/[0.08]"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
 
-                {isFree && (
-                  <div className="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h2 className="font-bold">Sua primeira geração é gratuita.</h2>
-                        <p className="mt-1 text-sm text-white/55">
-                          Depois de testar o primeiro carrossel, vamos te mostrar o plano ideal para continuar criando.
-                        </p>
-                      </div>
-                      <Link href="/dashboard/planos" className="rounded-full bg-[var(--brand-primary)] px-5 py-3 text-sm font-bold">
-                        Ver planos
-                      </Link>
+              {isFree && (
+                <div className="mt-auto rounded-[20px] border border-white/16 bg-[#1a1b1e] p-8">
+                  <div className="flex items-center justify-between gap-6">
+                    <div>
+                      <h2 className="text-2xl font-bold">Sua primeira geração é gratuita.</h2>
+                      <p className="mt-2 text-lg text-white/55">
+                        Depois de testar o primeiro carrossel, vamos te mostrar o plano ideal para continuar criando.
+                      </p>
                     </div>
+                    <Link href="/dashboard/planos" className="rounded-full bg-purple-500 px-10 py-4 text-xl font-bold text-white shadow-[0_12px_35px_rgba(168,85,247,0.35)]">
+                      Ver planos
+                    </Link>
                   </div>
-                )}
-              </section>
-            ) : (
-              <section className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-3xl border border-white/10 bg-[#1b1c1e] p-6">
-                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/20 text-[var(--brand-primary)]">
-                    <Gauge className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm text-white/55">Créditos disponíveis</p>
-                  <h2 className="mt-2 text-4xl font-bold">{profile?.credits || 0}<span className="text-lg text-white/35">/{maxCredits}</span></h2>
                 </div>
+              )}
+            </section>
+          ) : (
+            <section className="relative mx-auto max-w-[1200px] px-10 py-10">
+              <div className="grid gap-7 lg:grid-cols-3">
+                <StatCard icon={<Gauge className="h-6 w-6" />} label="Créditos disponíveis" value={`${profile?.credits || 0}`} suffix={`/${maxCredits}`} color="purple" />
+                <StatCard icon={<BarChart3 className="h-6 w-6" />} label="Carrosséis nos projetos" value={`${totalCarousels}`} color="cyan" />
+                <StatCard icon={<CreditCard className="h-6 w-6" />} label="Plano atual" value={profile?.plan === 'free' ? 'Grátis' : profile?.plan || 'Grátis'} color="emerald" />
 
-                <div className="rounded-3xl border border-white/10 bg-[#1b1c1e] p-6">
-                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm text-white/55">Carrosséis nos projetos</p>
-                  <h2 className="mt-2 text-4xl font-bold">{totalCarousels}</h2>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-[#1b1c1e] p-6">
-                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
-                    <CreditCard className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm text-white/55">Plano atual</p>
-                  <h2 className="mt-2 text-4xl font-bold capitalize">{profile?.plan === 'free' ? 'Grátis' : profile?.plan}</h2>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-[#1b1c1e] p-6 lg:col-span-2">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold">Projetos recentes</h2>
-                    <button onClick={() => setDashboardMode(false)} className="text-sm font-bold text-[var(--accent)]">
+                <div className="rounded-[28px] border border-white/10 bg-[#17181b] p-10 lg:col-span-2">
+                  <div className="mb-8 flex items-center justify-between">
+                    <h2 className="text-3xl font-bold">Projetos recentes</h2>
+                    <button onClick={() => setDashboardMode(false)} className="text-lg font-semibold text-white">
                       Criar novo
                     </button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-5">
                     {projects.slice(0, 5).map((project) => (
-                      <Link key={project.id} href={`/dashboard/studio?project=${project.id}`} className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3 hover:bg-white/[0.08]">
-                        <span className="font-semibold">{project.name}</span>
-                        <span className="text-sm text-white/45">{project.carousels?.length || 0} carrossel(is)</span>
+                      <Link key={project.id} href={`/dashboard/studio?project=${project.id}`} className="flex items-center justify-between rounded-[20px] bg-white/[0.06] px-7 py-6 text-xl hover:bg-white/[0.09]">
+                        <span className="truncate font-medium">{project.name}</span>
+                        <span className="shrink-0 text-base text-white/45">{project.carousels?.length || 0} carrossel(is)</span>
                       </Link>
                     ))}
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-[#1b1c1e] p-6">
-                  <h2 className="mb-4 text-lg font-bold">Acesso rápido</h2>
-                  <div className="space-y-2">
-                    <Link href="/dashboard/perfil" className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-bold hover:bg-white/[0.08]">
-                      <User className="h-4 w-4" /> Perfil
-                    </Link>
-                    <Link href="/dashboard/marca" className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-bold hover:bg-white/[0.08]">
-                      <Sparkles className="h-4 w-4" /> Brand Kit
-                    </Link>
-                    <Link href="/dashboard/planos" className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-bold hover:bg-white/[0.08]">
-                      <Calendar className="h-4 w-4" /> Planos
-                    </Link>
+                <div className="rounded-[28px] border border-white/10 bg-[#17181b] p-10">
+                  <h2 className="mb-8 text-3xl font-bold">Acesso rápido</h2>
+                  <div className="space-y-4">
+                    <QuickLink href="/dashboard/perfil" icon={<User className="h-5 w-5" />} label="Perfil" />
+                    <QuickLink href="/dashboard/marca" icon={<Sparkles className="h-5 w-5" />} label="Brand Kit" />
+                    <QuickLink href="/dashboard/planos" icon={<Calendar className="h-5 w-5" />} label="Planos" />
                   </div>
                 </div>
-              </section>
-            )}
-          </div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </div>
+  )
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  suffix,
+  color,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  suffix?: string
+  color: 'purple' | 'cyan' | 'emerald'
+}) {
+  const colorClass = {
+    purple: 'bg-purple-500/18 text-purple-300',
+    cyan: 'bg-cyan-500/15 text-cyan-300',
+    emerald: 'bg-emerald-500/15 text-emerald-300',
+  }[color]
+
+  return (
+    <div className="rounded-[28px] border border-white/10 bg-[#17181b] p-8">
+      <div className={`mb-7 flex h-12 w-12 items-center justify-center rounded-2xl ${colorClass}`}>{icon}</div>
+      <p className="text-lg text-white/60">{label}</p>
+      <h2 className="mt-3 text-5xl font-extrabold capitalize leading-none">
+        {value}
+        {suffix && <span className="text-2xl text-white/35">{suffix}</span>}
+      </h2>
+    </div>
+  )
+}
+
+function QuickLink({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
+  return (
+    <Link href={href} className="flex items-center gap-5 rounded-[18px] bg-white/[0.06] px-7 py-5 text-xl font-medium text-white/85 hover:bg-white/[0.1]">
+      <span className="text-white/45">{icon}</span>
+      {label}
+    </Link>
   )
 }

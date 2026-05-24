@@ -12,6 +12,14 @@ type Profile = {
   avatar_url?: string | null
 }
 
+type Brand = {
+  id: string
+  name: string
+  primary_color?: string | null
+  secondary_color?: string | null
+  is_default?: boolean | null
+}
+
 const quickLinks = [
   { name: 'Perfil', href: '/dashboard/perfil', icon: User },
   { name: 'Brand Kit', href: '/dashboard/marca', icon: Sparkles },
@@ -24,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const supabase = createClient()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [brands, setBrands] = useState<Brand[]>([])
 
   useEffect(() => {
     async function fetchProfile() {
@@ -39,7 +48,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .eq('id', user.id)
         .single()
 
+      const { data: brandData } = await supabase
+        .from('brands')
+        .select('id, name, primary_color, secondary_color, is_default')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+
       setProfile(data || { name: user.email?.split('@')[0] || 'Criador', avatar_url: user.user_metadata?.avatar_url })
+      setBrands(brandData || [])
     }
 
     fetchProfile()
@@ -81,6 +97,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )
         })}
       </div>
+
+      {pathname === '/dashboard/marca' && (
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <h2 className="text-sm font-bold text-white/55">Suas marcas</h2>
+            <span className="text-xs font-bold text-cyan-300">{brands.length}</span>
+          </div>
+          <div className="space-y-2">
+            {brands.length === 0 ? (
+              <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-white/45">Nenhum Brand Kit criado.</p>
+            ) : (
+              brands.map((brand) => (
+                <a
+                  key={brand.id}
+                  href={`/dashboard/marca?brand=${brand.id}`}
+                  className="block rounded-2xl bg-white/[0.04] p-3 text-left transition hover:bg-white/[0.08]"
+                >
+                  <span className="block truncate text-sm font-bold">{brand.name}</span>
+                  <span className="mt-2 flex items-center gap-1">
+                    <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.primary_color || '#a855f7' }} />
+                    <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.secondary_color || '#22d3ee' }} />
+                    {brand.is_default && <span className="ml-auto text-[10px] font-bold text-cyan-300">PADRÃO</span>}
+                  </span>
+                </a>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 
@@ -89,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="flex h-20 items-center justify-between border-b border-white/10 bg-[#111113] px-5 lg:px-8">
         <Link href="/dashboard" className="flex items-center gap-3">
           <Logo />
-          <span className="rounded-md bg-white/12 px-2 py-1 text-[11px] font-bold text-white/70">BETA</span>
+          <span className="rounded-md bg-white/[0.12] px-2 py-1 text-[11px] font-bold text-white/70">BETA</span>
         </Link>
 
         <div className="flex items-center gap-3">
@@ -128,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <main className="relative overflow-hidden bg-[#111113] px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.13)_1px,transparent_1.2px)] bg-[length:34px_34px] opacity-20" />
-          <div className="relative mx-auto max-w-6xl">{children}</div>
+          <div className="relative mx-auto w-full max-w-6xl overflow-hidden">{children}</div>
         </main>
       </div>
     </div>
