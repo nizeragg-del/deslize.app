@@ -114,6 +114,7 @@ function CarouselStudioCanvas() {
   const requestedProjectId = searchParams.get('project') || ''
   const initialPrompt = searchParams.get('prompt') || ''
   const requestedBrandId = searchParams.get('brand') || ''
+  const shouldAutoGenerate = searchParams.get('auto') === '1'
   const supabase = createClient()
   const canvasRef = useRef<HTMLDivElement>(null)
   const exportTrackRef = useRef<HTMLDivElement>(null)
@@ -141,14 +142,27 @@ function CarouselStudioCanvas() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [creditsUpsellOpen, setCreditsUpsellOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [studioLoading, setStudioLoading] = useState(true)
   const [status, setStatus] = useState('Pronto para criar')
+  const autoGenerateRef = useRef(false)
 
   const activeBrand = useMemo(
     () => brands.find((brand) => brand.id === selectedBrandId),
     [brands, selectedBrandId]
+  )
+
+  const brandConfigured = useMemo(
+    () =>
+      Boolean(
+        activeBrand?.name &&
+          activeBrand?.niche &&
+          activeBrand?.target_audience &&
+          (activeBrand?.content_goal || activeBrand?.main_offer || activeBrand?.audience_pains)
+      ),
+    [activeBrand]
   )
 
   const selectedNodes = useMemo(
@@ -184,9 +198,15 @@ function CarouselStudioCanvas() {
   }, [])
 
   useEffect(() => {
-    if (initialPrompt) setPrompt(initialPrompt)
+    if (initialPrompt) {
+      const storedPrompt =
+        typeof window !== 'undefined' && requestedProjectId
+          ? sessionStorage.getItem(`studio:auto-prompt:${requestedProjectId}`)
+          : ''
+      setPrompt(storedPrompt || initialPrompt)
+    }
     if (requestedBrandId) setSelectedBrandId(requestedBrandId)
-  }, [initialPrompt, requestedBrandId])
+  }, [initialPrompt, requestedBrandId, requestedProjectId])
 
   const buildNodesFromCarousel = (carousel: any, baseX: number, baseY: number) => {
     const html = carousel?.html_content || ''
@@ -323,6 +343,27 @@ function CarouselStudioCanvas() {
   useEffect(() => {
     if (activeProjectId) loadProjectCarousels(activeProjectId)
   }, [activeProjectId])
+
+  useEffect(() => {
+    if (!shouldAutoGenerate || autoGenerateRef.current || studioLoading || !activeProjectId || !brandConfigured) return
+
+    const autoPrompt =
+      typeof window !== 'undefined' && requestedProjectId
+        ? sessionStorage.getItem(`studio:auto-prompt:${requestedProjectId}`)
+        : ''
+
+    const promptToGenerate = (autoPrompt || prompt).trim()
+    if (!promptToGenerate || nodes.length > 0) return
+
+    autoGenerateRef.current = true
+    setPrompt(promptToGenerate)
+    setTimeout(() => {
+      handleGenerate(promptToGenerate)
+      if (typeof window !== 'undefined' && requestedProjectId) {
+        sessionStorage.removeItem(`studio:auto-prompt:${requestedProjectId}`)
+      }
+    }, 250)
+  }, [shouldAutoGenerate, studioLoading, activeProjectId, brandConfigured, requestedProjectId, prompt, nodes.length])
 
   const worldPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect()
@@ -530,9 +571,15 @@ function CarouselStudioCanvas() {
     return `Aplique esta instruÃ§Ã£o apenas no(s) ${slideText}: ${text}`
   }
 
-  const handleGenerate = async () => {
-    const cleanPrompt = prompt.trim()
+  const handleGenerate = async (promptOverride?: string | unknown) => {
+    const cleanPrompt = (typeof promptOverride === 'string' ? promptOverride : prompt).trim()
     if (!cleanPrompt || generating) return
+
+    if (!brandConfigured) {
+      alert('Antes de gerar um carrossel, configure seu Brand Kit com nicho, público e intenção.')
+      window.location.href = '/dashboard/marca'
+      return
+    }
 
     if (htmlContent && selectedNodes.length > 0) {
       await handleModify(cleanPrompt)
@@ -572,6 +619,15 @@ function CarouselStudioCanvas() {
 
       const data = await res.json()
       if (!res.ok || !data.success) {
+        const errorMessage = data.error || 'Erro ao gerar carrossel'
+        if (
+          res.status === 402 ||
+          /cr[eé]ditos? insuficientes|sem cr[eé]ditos|adquira mais cr[eé]ditos/i.test(errorMessage)
+        ) {
+          setCreditsUpsellOpen(true)
+          setStatus('Você precisa de créditos para gerar novos carrosséis.')
+          return
+        }
         throw new Error(data.error || 'Erro ao gerar carrossel')
       }
 
@@ -593,7 +649,11 @@ function CarouselStudioCanvas() {
     } catch (err: any) {
       console.error(err)
       setStatus(err.message || 'Erro ao gerar')
-      alert(err.message || 'Erro ao gerar carrossel')
+      if (/cr[eé]ditos? insuficientes|sem cr[eé]ditos|adquira mais cr[eé]ditos/i.test(err.message || '')) {
+        setCreditsUpsellOpen(true)
+      } else {
+        alert(err.message || 'Erro ao gerar carrossel')
+      }
     } finally {
       setGenerating(false)
     }
@@ -651,6 +711,42 @@ function CarouselStudioCanvas() {
   const handleModifyShortcut = (instruction: string) => {
     if (!htmlContent && !primarySelectedNode?.carouselHtml) return
     setPrompt(instruction)
+  }
+
+  const handleGenerateIdea = async () => {
+    if (generating) return
+
+    if (!brandConfigured) {
+      alert('Configure seu Brand Kit primeiro. A ideia é criada com base no nicho, público e intenção da sua marca.')
+      window.location.href = '/dashboard/marca'
+      return
+    }
+
+    setGenerating(true)
+    setStatus('Gerando ideia com base no Brand Kit...')
+    try {
+      const res = await fetch('/api/carousel/brief-ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId: selectedBrandId,
+          currentBrief: prompt,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Não consegui gerar uma ideia agora.')
+      }
+
+      setPrompt(data.brief)
+      setStatus('Ideia pronta. Revise e envie para gerar.')
+    } catch (err: any) {
+      setStatus(err.message || 'Erro ao gerar ideia.')
+      alert(err.message || 'Erro ao gerar ideia com IA.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const duplicateSelected = () => {
@@ -1065,6 +1161,14 @@ function CarouselStudioCanvas() {
               </option>
             )}
           </select>
+          <button
+            onClick={handleGenerateIdea}
+            disabled={generating}
+            className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs font-bold text-cyan-200 disabled:opacity-50"
+            type="button"
+          >
+            {generating ? 'Gerando...' : 'Gerar ideia'}
+          </button>
         </div>
         <div className="flex items-end gap-3">
           <textarea
@@ -1199,6 +1303,59 @@ function CarouselStudioCanvas() {
               <Link href="/dashboard/planos?plan=starter" className="flex-1 rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-sm font-bold text-white">
                 Assinar plano
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {creditsUpsellOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-md">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-purple-400/25 bg-[#151518] p-7 shadow-[0_0_70px_rgba(124,58,237,0.24)]">
+            <button
+              onClick={() => setCreditsUpsellOpen(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-white/55 hover:bg-white/10 hover:text-white"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
+              <Sparkles className="h-7 w-7" />
+            </div>
+
+            <h2 className="max-w-sm text-3xl font-bold leading-tight">Seu próximo carrossel está a um plano de distância.</h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/60">
+              Seus créditos gratuitos acabaram. Ative um plano para continuar gerando carrosséis com Brand Kit, ajustes por IA e exportação pronta para publicar.
+            </p>
+
+            <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/75">
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-purple-300" />
+                Mais créditos mensais para novas gerações
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-cyan-300" />
+                Brand Kits e ideias com IA baseadas no seu nicho
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                Exportação em PNG para publicar no Instagram
+              </div>
+            </div>
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/dashboard/planos?plan=starter"
+                className="flex-1 rounded-2xl bg-purple-500 px-5 py-4 text-center text-sm font-bold text-white shadow-[0_16px_35px_rgba(168,85,247,0.28)] hover:bg-purple-400"
+              >
+                Ver planos
+              </Link>
+              <button
+                onClick={() => setCreditsUpsellOpen(false)}
+                className="flex-1 rounded-2xl border border-white/10 px-5 py-4 text-sm font-bold text-white/70 hover:bg-white/10 hover:text-white"
+              >
+                Continuar editando
+              </button>
             </div>
           </div>
         </div>

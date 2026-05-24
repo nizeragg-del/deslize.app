@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Palette, Plus, Save, Sparkles, Trash2, Type, Upload } from 'lucide-react'
+import { Check, Loader2, Palette, Save, Sparkles, Trash2, Type, Upload } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 const presets = [
@@ -59,7 +59,8 @@ export default function BrandKitPage() {
       setProfile(profileData)
       setBrands(brandData || [])
 
-      const active = brandData?.find((brand) => brand.is_default) || brandData?.[0]
+      const brandFromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('brand') : null
+      const active = brandData?.find((brand) => brand.id === brandFromUrl) || brandData?.find((brand) => brand.is_default) || brandData?.[0]
       if (active) {
         setSelectedBrandId(active.id)
         fillForm(active)
@@ -89,39 +90,6 @@ export default function BrandKitPage() {
       contentGoal: brand.content_goal || '',
       isDefault: Boolean(brand.is_default),
     })
-  }
-
-  function selectBrand(brand: any) {
-    setSelectedBrandId(brand.id)
-    fillForm(brand)
-  }
-
-  async function createBrand() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data } = await supabase
-      .from('brands')
-      .insert({
-        user_id: user.id,
-        name: `Nova Marca ${brands.length + 1}`,
-        primary_color: '#a855f7',
-        secondary_color: '#22d3ee',
-        bg_color: '#09090b',
-        font_display: 'Outfit',
-        font_body: 'Inter',
-        tone: 'Profissional',
-        is_default: brands.length === 0,
-      })
-      .select('*')
-      .single()
-
-    if (data) {
-      setBrands((current) => [...current, data])
-      selectBrand(data)
-    }
   }
 
   async function uploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
@@ -200,7 +168,10 @@ export default function BrandKitPage() {
     await supabase.from('brands').delete().eq('id', selectedBrandId)
     const next = brands.filter((brand) => brand.id !== selectedBrandId)
     setBrands(next)
-    if (next[0]) selectBrand(next[0])
+    if (next[0]) {
+      setSelectedBrandId(next[0].id)
+      fillForm(next[0])
+    }
   }
 
   if (loading) {

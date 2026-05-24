@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server'
 export const maxDuration = 30
 
 type BriefIdeaResponse = {
-  brief: string
+  brief: unknown
   title?: string
   angles?: string[]
 }
@@ -115,14 +115,20 @@ REGRAS:
       }
     }
 
-    if (!parsed.brief?.trim()) {
+    const briefText = typeof parsed.brief === 'string'
+      ? parsed.brief
+      : parsed.brief
+        ? JSON.stringify(parsed.brief)
+        : ''
+
+    if (!briefText.trim()) {
       return NextResponse.json({ error: 'A IA nÃ£o retornou uma ideia vÃ¡lida.' }, { status: 502 })
     }
 
     return NextResponse.json({
       success: true,
       title: parsed.title || '',
-      brief: parsed.brief.trim(),
+      brief: briefText.trim(),
       angles: Array.isArray(parsed.angles) ? parsed.angles.slice(0, 3) : [],
     })
   } catch (err: any) {
