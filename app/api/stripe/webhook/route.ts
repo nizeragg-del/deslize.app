@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { stripe } from '@/utils/stripe/server'
+import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
 import { getPlanByPriceId } from '@/utils/stripe/plans'
 import { createClient } from '@supabase/supabase-js'
 
@@ -48,34 +48,24 @@ export async function POST(req: Request) {
 
         // Retrieve the line items to know which plan was bought
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
-        const priceId = lineItems.data[0]?.price?.id
+        const planPriceId = lineItems.data
+          .map((item: any) => item.price?.id)
+          .find((priceId: string | undefined) => getPlanByPriceId(priceId))
 
-        const planConfig = getPlanByPriceId(priceId)
+        const planConfig = getPlanByPriceId(planPriceId)
 
         if (planConfig) {
-          // Add transaction
-          await supabaseAdmin.from('credit_transactions').insert({
-            user_id: userId,
-            amount: planConfig.credits,
-            reason: 'plan_upgrade',
-            stripe_session_id: session.id
+          await supabaseAdmin.rpc('add_credits', {
+            p_user_id: userId,
+            p_amount: planConfig.credits,
+            p_reason: 'plan_upgrade',
+            p_stripe_session_id: session.id
           })
-
-          // Fetch current profile to increment credits safely if we were doing it via JS
-          // Better: use Postgres function or just update
-          const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('credits')
-            .eq('id', userId)
-            .single()
-
-          const currentCredits = profile?.credits || 0
 
           await supabaseAdmin.from('profiles').update({
             stripe_customer_id: session.customer,
             stripe_subscription_id: session.subscription,
-            plan: planConfig.plan,
-            credits: currentCredits + planConfig.credits
+            plan: planConfig.plan
           }).eq('id', userId)
         }
 
@@ -92,14 +82,16 @@ export async function POST(req: Request) {
         // Buscar a assinatura para obter os metadados
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const userId = subscription.metadata?.userId
-        const orderBump = subscription.metadata?.orderBump === 'true'
 
         if (!userId) {
           console.warn(`[Webhook] Nenhum userId encontrado nos metadados da assinatura ${subscriptionId}`)
           break
         }
 
-        const invoicePriceId = invoice.lines?.data?.[0]?.price?.id
+        const invoiceLines = invoice.lines?.data || []
+        const invoicePriceId = invoiceLines
+          .map((line: any) => line.price?.id)
+          .find((priceId: string | undefined) => getPlanByPriceId(priceId))
         const planConfig = getPlanByPriceId(invoicePriceId)
 
         if (!planConfig) {
@@ -107,11 +99,16 @@ export async function POST(req: Request) {
           break
         }
 
+        const orderBumpPriceId = sanitizeEnvValue(process.env.STRIPE_PRICE_ORDER_BUMP)
+        const hasPaidOrderBump = Boolean(
+          orderBumpPriceId && invoiceLines.some((line: any) => line.price?.id === orderBumpPriceId)
+        )
+
         let creditsToAdd = 0
         let reason = 'subscription_renewal'
 
         if (invoice.billing_reason === 'subscription_create') {
-          creditsToAdd = planConfig.credits + (orderBump ? 20 : 0)
+          creditsToAdd = planConfig.credits + (hasPaidOrderBump ? 20 : 0)
           reason = 'plan_upgrade'
         } else if (invoice.billing_reason === 'subscription_cycle') {
           creditsToAdd = planConfig.credits
@@ -119,29 +116,17 @@ export async function POST(req: Request) {
         }
 
         if (creditsToAdd > 0) {
-          // Registrar transação de créditos
-          await supabaseAdmin.from('credit_transactions').insert({
-            user_id: userId,
-            amount: creditsToAdd,
-            reason: reason,
-            stripe_session_id: invoice.id
+          await supabaseAdmin.rpc('add_credits', {
+            p_user_id: userId,
+            p_amount: creditsToAdd,
+            p_reason: reason,
+            p_stripe_session_id: invoice.id
           })
 
-          // Obter perfil atual
-          const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('credits')
-            .eq('id', userId)
-            .single()
-
-          const currentCredits = profile?.credits || 0
-
-          // Atualizar perfil
           await supabaseAdmin.from('profiles').update({
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
-            plan: planConfig.plan,
-            credits: currentCredits + creditsToAdd
+            plan: planConfig.plan
           }).eq('id', userId)
 
           console.log(`[Webhook] Processado pagamento para o usuário ${userId}. Plano: ${planConfig.plan}. Créditos adicionados: ${creditsToAdd}`)

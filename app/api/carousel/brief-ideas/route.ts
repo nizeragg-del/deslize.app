@@ -43,6 +43,10 @@ export async function POST(req: Request) {
     const brandId = typeof body.brandId === 'string' ? body.brandId : ''
     const currentBrief = typeof body.currentBrief === 'string' ? body.currentBrief.trim() : ''
 
+    if (currentBrief.length > 4_000) {
+      return NextResponse.json({ error: 'Brief muito longo para gerar ideia.' }, { status: 413 })
+    }
+
     let query = supabase
       .from('brands')
       .select('id, name, tagline, tone, niche, target_audience, main_offer, audience_pains, content_goal')

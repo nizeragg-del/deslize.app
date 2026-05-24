@@ -21,6 +21,10 @@ export async function renderCarouselToPngs({
   const browserlessUrl = process.env.BROWSERLESS_URL
 
   if (!browserlessUrl) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('BROWSERLESS_URL is required to render carousel PNGs in production')
+    }
+
     console.warn('BROWSERLESS_URL nao configurado, retornando URLs de teste')
     return Array.from({ length: slideCount }).map(
       (_, i) => `https://placehold.co/1080x1350/7C3AED/FFFFFF.png?text=Slide+${i + 1}`

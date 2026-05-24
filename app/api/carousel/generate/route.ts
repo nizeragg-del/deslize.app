@@ -57,8 +57,12 @@ export async function POST(req: Request) {
       ? Math.min(7, Math.max(3, Math.round(requestedSlideCount)))
       : 7
 
-    if (!topic) {
+    if (typeof topic !== 'string' || !topic.trim()) {
       return NextResponse.json({ error: 'O tema (topic) é obrigatório' }, { status: 400 })
+    }
+
+    if (topic.length > 6_000) {
+      return NextResponse.json({ error: 'Tema muito longo para geração.' }, { status: 413 })
     }
 
     if (
@@ -620,7 +624,7 @@ Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha
     const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${htmlContent}`
 
     // Save the carousel to public.carousels
-    const { data: carousel, error: carouselInsertError } = await supabase
+    const { data: carousel, error: carouselInsertError } = await supabaseAdmin
       .from('carousels')
       .insert({
         user_id: user.id,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export async function POST() {
   try {
@@ -10,8 +11,13 @@ export async function POST() {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
-      .rpc('claim_onboarding_bonus')
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data, error } = await supabaseAdmin
+      .rpc('claim_onboarding_bonus', { p_user_id: user.id })
       .single()
     const bonusResult = data as { new_credits?: number; bonus_claimed?: boolean } | null
 

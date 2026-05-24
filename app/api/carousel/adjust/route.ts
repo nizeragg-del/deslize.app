@@ -30,6 +30,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'HTML atual e instrução são obrigatórios' }, { status: 400 })
     }
 
+    if (typeof currentHtml !== 'string' || currentHtml.length > 250_000) {
+      return NextResponse.json({ error: 'Carrossel muito grande para ajuste.' }, { status: 413 })
+    }
+
+    if (typeof instruction !== 'string' || instruction.length > 4_000) {
+      return NextResponse.json({ error: 'Instrução muito longa para ajuste.' }, { status: 413 })
+    }
+
     const pColor = brand?.primaryColor || '#7C3AED'
     const sColor = brand?.secondaryColor || '#06B6D4'
     const bgColor = brand?.bgColor || '#0A0A0F'

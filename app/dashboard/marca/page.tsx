@@ -259,9 +259,9 @@ export default function BrandKitPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">Logo da marca</span>
-                <span className="block truncate text-xs text-white/45">{form.logoUrl || 'Enviar PNG, SVG ou WebP'}</span>
+                <span className="block truncate text-xs text-white/45">{form.logoUrl || 'Enviar PNG, JPEG ou WebP'}</span>
               </span>
-              <input type="file" accept="image/png,image/svg+xml,image/webp" onChange={uploadLogo} className="hidden" />
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadLogo} className="hidden" />
             </label>
           </section>
 

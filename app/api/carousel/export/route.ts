@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Error exporting carousel:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro ao exportar carrossel para PNG' },
+      { error: 'Erro ao exportar carrossel para PNG' },
       { status: 500 }
     )
   }
