@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Calendar, LogOut, Menu, Sparkles, User, X } from 'lucide-react'
+import { Calendar, LogOut, Menu, Plus, Sparkles, User, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Logo } from '@/components/Logo'
 
@@ -102,7 +102,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mt-5 border-t border-white/10 pt-5">
           <div className="mb-3 flex items-center justify-between px-1">
             <h2 className="text-sm font-bold text-white/55">Suas marcas</h2>
-            <span className="text-xs font-bold text-cyan-300">{brands.length}</span>
+            <button
+              onClick={async () => {
+                const {
+                  data: { user },
+                } = await supabase.auth.getUser()
+                if (!user) return
+
+                const { data } = await supabase
+                  .from('brands')
+                  .insert({
+                    user_id: user.id,
+                    name: `Nova Marca ${brands.length + 1}`,
+                    primary_color: '#a855f7',
+                    secondary_color: '#22d3ee',
+                    bg_color: '#09090b',
+                    font_display: 'Outfit',
+                    font_body: 'Inter',
+                    tone: 'Profissional',
+                    is_default: brands.length === 0,
+                  })
+                  .select('id, name, primary_color, secondary_color, is_default')
+                  .single()
+
+                if (data) {
+                  setBrands((current) => [...current, data])
+                  router.push(`/dashboard/marca?brand=${data.id}`)
+                }
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+              aria-label="Adicionar marca"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
           <div className="space-y-2">
             {brands.length === 0 ? (

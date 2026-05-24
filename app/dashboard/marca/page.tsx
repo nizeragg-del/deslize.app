@@ -226,30 +226,7 @@ export default function BrandKitPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-3xl border border-white/10 bg-[#191a1d] p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white/55">Suas marcas</h2>
-            <button onClick={createBrand} disabled={brands.length >= limit} className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white disabled:opacity-35">
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {brands.map((brand) => (
-              <button key={brand.id} onClick={() => selectBrand(brand)} className={`w-full rounded-2xl p-3 text-left transition ${selectedBrandId === brand.id ? 'bg-[#2f3135]' : 'hover:bg-white/[0.05]'}`}>
-                <span className="block truncate text-sm font-bold">{brand.name}</span>
-                <span className="mt-2 flex gap-1">
-                  <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.primary_color }} />
-                  <i className="h-3 w-3 rounded-full border border-white/20" style={{ background: brand.secondary_color }} />
-                  {brand.is_default && <span className="ml-auto text-[10px] font-bold text-cyan-300">PADRÃO</span>}
-                </span>
-              </button>
-            ))}
-            {brands.length === 0 && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-white/45">Nenhum kit criado ainda.</p>}
-          </div>
-        </aside>
-
-        <form onSubmit={saveBrand} className="space-y-5">
+      <form onSubmit={saveBrand} className="space-y-5">
           <section className="rounded-3xl border border-white/10 bg-[#191a1d] p-6">
             <div className="mb-5 flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-cyan-300" />
@@ -347,8 +324,7 @@ export default function BrandKitPage() {
               </button>
             </div>
           </div>
-        </form>
-      </div>
+      </form>
     </div>
   )
 }
