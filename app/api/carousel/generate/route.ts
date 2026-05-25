@@ -113,6 +113,29 @@ export async function POST(req: Request) {
     const logoMarkup = safeLogoUrl
       ? `<div class="slide-logo"><img class="slide-logo-img" src="${safeLogoUrl}" alt="${safeBrandName}"></div>`
       : `<div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${safeBrandName}</span></div>`
+    const creativePackRules = `
+CLASSIFICACAO DE NICHO E PACK CRIATIVO:
+- Antes de escrever o HTML, classifique mentalmente o nicho usando o Brand Kit, o tema e a intenção do post. Não mostre essa classificação no retorno.
+- Escolha apenas 1 pack criativo principal e 1 componente de apoio por slide. Não misture vários packs no mesmo carrossel.
+- Saúde, clínicas, estética, terapias: use "diagnostic-clean" com .diagnostic-card, .checkline, selos discretos, linguagem de confiança e prova.
+- Finanças, investimentos, vendas, negócios: use "metric-board" com .metric-strip, .mini-chart, números curtos, alertas e comparação antes/depois.
+- Marketing, social media, infoprodutos, lançamentos: use "growth-system" com .funnel-step, .proof-card, objeção vs resposta e blocos de promessa.
+- Gastronomia, restaurantes, delivery: use "menu-editorial" com .menu-tag, .ingredient-note, preço/benefício e textura editorial leve.
+- Moda, beleza, luxo, arquitetura: use "moodboard-premium" com .quote-note, molduras finas, etiquetas editoriais e bastante espaço negativo.
+- Games, streaming, entretenimento, esportes: use "versus-scoreboard" com .versus-card, .score-row, .winner-badge, ranking e placar compacto.
+- SaaS, tecnologia, produtividade, apps: use "product-dashboard" com .ui-panel, .status-chip, .metric-strip, feature cards e micro dashboard.
+- Imobiliário, turismo, eventos, educação local: use "location-guide" com .map-pin-row, .feature-list, cards de destaque e dados objetivos.
+- Se o nicho não encaixar, use "editorial-authority": título forte, .insight-card, .quote-note e 1 detalhe gráfico recorrente.
+
+PLANEJAMENTO OBRIGATORIO DE SLIDES:
+- Slide 1: promessa/hook específico do nicho.
+- Slide 2: problema ou critério principal.
+- Slide 3: mecanismo, opção ou comparação.
+- Slide 4: prova, dados, checklist ou placar.
+- Slide 5: recomendação prática.
+- Slide 6: insight avançado ou erro comum.
+- Slide 7: CTA simples e contextual.
+`
 
     // Dynamically load all fonts required: user's custom brand fonts + theme specific fallback fonts
     const fontsSet = new Set<string>()
@@ -365,6 +388,22 @@ export async function POST(req: Request) {
       .stat-card, .insight-card { background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; padding: 13px !important; position: relative !important; z-index: 10 !important; width: 100% !important; max-width: 100% !important; max-height: 108px !important; overflow: hidden !important; }
       .stat-card *, .insight-card *, .glass-panel *, .console-panel *, .quote-box * { line-height: 1.25 !important; }
       .connector-line { height: 2px !important; background: linear-gradient(90deg, ${pColor}, transparent) !important; border-radius: 999px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
+      .score-row { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; width: 100% !important; padding: 10px 12px !important; border-radius: 12px !important; background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.1) !important; position: relative !important; z-index: 10 !important; }
+      .score-label { font-size: 11px !important; font-weight: 800 !important; color: rgba(255,255,255,0.86) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
+      .score-value { font-size: 22px !important; font-weight: 900 !important; color: ${pColor} !important; line-height: 1 !important; }
+      .versus-card { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
+      .versus-card > div { min-height: 74px !important; padding: 12px !important; border-radius: 14px !important; background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; overflow: hidden !important; }
+      .winner-badge, .status-chip, .menu-tag { display: inline-flex !important; align-items: center !important; width: fit-content !important; max-width: 100% !important; padding: 6px 10px !important; border-radius: 999px !important; background: ${pColor}24 !important; border: 1px solid ${pColor}66 !important; color: #fff !important; font-size: 10px !important; font-weight: 900 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; position: relative !important; z-index: 10 !important; }
+      .metric-strip { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; width: 100% !important; position: relative !important; z-index: 10 !important; }
+      .metric-strip > div { padding: 10px 8px !important; border-radius: 12px !important; background: rgba(255,255,255,0.052) !important; border: 1px solid rgba(255,255,255,0.1) !important; overflow: hidden !important; }
+      .mini-chart { display: flex !important; align-items: flex-end !important; gap: 7px !important; height: 72px !important; width: 100% !important; padding: 10px !important; border-radius: 14px !important; background: rgba(255,255,255,0.045) !important; border: 1px solid rgba(255,255,255,0.1) !important; position: relative !important; z-index: 10 !important; }
+      .mini-chart span { flex: 1 !important; min-width: 0 !important; border-radius: 999px 999px 4px 4px !important; background: linear-gradient(180deg, ${sColor}, ${pColor}) !important; opacity: 0.9 !important; }
+      .diagnostic-card, .proof-card, .ui-panel, .quote-note { width: 100% !important; max-height: 120px !important; padding: 14px !important; border-radius: 14px !important; background: rgba(255,255,255,0.055) !important; border: 1px solid rgba(255,255,255,0.12) !important; position: relative !important; z-index: 10 !important; overflow: hidden !important; }
+      .checkline, .map-pin-row, .feature-list { display: flex !important; align-items: flex-start !important; gap: 10px !important; width: 100% !important; font-size: 13px !important; line-height: 1.35 !important; color: rgba(255,255,255,0.82) !important; position: relative !important; z-index: 10 !important; }
+      .checkline::before, .map-pin-row::before { content: "" !important; width: 7px !important; height: 7px !important; border-radius: 999px !important; background: ${sColor} !important; margin-top: 6px !important; flex-shrink: 0 !important; }
+      .funnel-step { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 10px 12px !important; border-radius: 12px !important; background: rgba(255,255,255,0.052) !important; border-left: 3px solid ${pColor} !important; position: relative !important; z-index: 10 !important; }
+      .ingredient-note { width: 100% !important; padding: 12px !important; border-radius: 14px !important; background: rgba(255,255,255,0.04) !important; border: 1px dashed rgba(255,255,255,0.18) !important; font-size: 12px !important; line-height: 1.35 !important; color: rgba(255,255,255,0.78) !important; position: relative !important; z-index: 10 !important; }
+      .image-slot { width: 100% !important; height: 82px !important; border-radius: 16px !important; background: linear-gradient(135deg, ${pColor}22, ${sColor}18) !important; border: 1px solid rgba(255,255,255,0.1) !important; position: relative !important; z-index: 10 !important; overflow: hidden !important; }
     `
 
     themeRules += `
@@ -473,6 +512,8 @@ CONTEXTO ESTRATÃ‰GICO DA MARCA:
 - Dores e desejos do pÃºblico: ${brandPains}
 - Objetivo do conteÃºdo: ${brandContentGoal}
 
+${creativePackRules}
+
 ${themeRules}
 
 FONTES E ESTILOS GLOBAIS ENVIADOS NO HEAD:
@@ -513,7 +554,7 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
   * Texto de corpo: <div class="slide-body body-font">...</div>
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
   * Área útil obrigatória: <div class="slide-content">...conteúdo principal...</div>
-  * Componentes profissionais opcionais: .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card, .connector-line
+  * Componentes profissionais opcionais: .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card, .connector-line, .score-row, .score-label, .score-value, .versus-card, .winner-badge, .metric-strip, .mini-chart, .diagnostic-card, .proof-card, .ui-panel, .quote-note, .status-chip, .menu-tag, .checkline, .map-pin-row, .feature-list, .funnel-step, .ingredient-note, .image-slot
 
 ESTRUTURA OBRIGATÓRIA DE CADA SLIDE:
 <div class="ig-slide">
