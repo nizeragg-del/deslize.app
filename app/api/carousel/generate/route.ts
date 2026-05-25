@@ -3,7 +3,9 @@ import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { renderCarouselToPngs } from '@/lib/server/carousel-renderer'
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rate-limit'
+import { sanitizeCarouselSlidesHtml } from '@/lib/server/sanitize-carousel-html'
+import { safeCssColor, safeFontFamily, safeHttpsUrl } from '@/lib/server/input-safety'
 
 export const maxDuration = 60
 
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
 
     refundUserId = user.id
 
-    const limited = checkRateLimit(`carousel:generate:${user.id}:${getClientIp(req)}`, 8, 60 * 60 * 1000)
+    const limited = await checkRateLimit(`carousel:generate:${user.id}`, 8, 60 * 60 * 1000)
     if (!limited.allowed) {
       return rateLimitResponse(limited.resetAt)
     }
@@ -94,18 +96,12 @@ export async function POST(req: Request) {
     }
 
     // Dynamic Fonts and CSS Styles based on the theme & Brand Kit properties
-    const pColor = brand?.primaryColor || '#7C3AED'
-    const sColor = brand?.secondaryColor || '#06B6D4'
-    const bgColor = brand?.bgColor || '#0A0A0F'
-    const fontDisplay = brand?.fontDisplay || 'Outfit'
-    const fontBody = brand?.fontBody || 'Inter'
-    let logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
-    try {
-      const parsedLogoUrl = logoUrl ? new URL(logoUrl) : null
-      if (parsedLogoUrl && parsedLogoUrl.protocol !== 'https:') logoUrl = ''
-    } catch {
-      logoUrl = ''
-    }
+    const pColor = safeCssColor(brand?.primaryColor, '#7C3AED')
+    const sColor = safeCssColor(brand?.secondaryColor, '#06B6D4')
+    const bgColor = safeCssColor(brand?.bgColor, '#0A0A0F')
+    const fontDisplay = safeFontFamily(brand?.fontDisplay, 'Outfit')
+    const fontBody = safeFontFamily(brand?.fontBody, 'Inter')
+    const logoUrl = safeHttpsUrl(brand?.logoUrl)
     const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
     const brandName = brand?.name || 'suamarca'
     const brandNiche = brand?.niche || 'nÃ£o informado'
@@ -621,7 +617,8 @@ Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha
       htmlContent = htmlContent.split('```')[1].split('```')[0].trim()
     }
 
-    const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${htmlContent}`
+    const sanitizedHtmlContent = sanitizeCarouselSlidesHtml(htmlContent)
+    const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${sanitizedHtmlContent}`
 
     // Save the carousel to public.carousels
     const { data: carousel, error: carouselInsertError } = await supabaseAdmin

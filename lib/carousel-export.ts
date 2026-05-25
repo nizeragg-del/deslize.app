@@ -45,13 +45,39 @@ export function snapshotCarouselTrack(track: HTMLElement | null) {
   return clone.innerHTML
 }
 
-export function getCarouselSlideUrls(supabase: any, carousel: any): string[] {
+const LEGACY_PUBLIC_SLIDES_BUCKET = 'slides'
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24
+
+export async function getCarouselSlideUrls(supabase: any, carousel: any): Promise<string[]> {
   const slides = Array.isArray(carousel?.slides) ? carousel.slides : []
 
-  return slides
+  const orderedSlides = slides
     .slice()
     .sort((a: any, b: any) => (a.slide_index ?? 0) - (b.slide_index ?? 0))
-    .map((slide: any) => slide.storage_path)
-    .filter(Boolean)
-    .map((path: string) => supabase.storage.from('slides').getPublicUrl(path).data.publicUrl)
+
+  const urls = await Promise.all(
+    orderedSlides.map(async (slide: any) => {
+      const path = slide?.storage_path
+      const bucket = slide?.storage_bucket || LEGACY_PUBLIC_SLIDES_BUCKET
+
+      if (!path) return ''
+
+      if (bucket === LEGACY_PUBLIC_SLIDES_BUCKET) {
+        return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
+      }
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
+
+      if (error) {
+        console.error('Error creating signed slide URL:', error)
+        return ''
+      }
+
+      return data?.signedUrl || ''
+    })
+  )
+
+  return urls.filter(Boolean)
 }

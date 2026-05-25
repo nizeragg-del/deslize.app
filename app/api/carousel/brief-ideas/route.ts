@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export const maxDuration = 30
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'NÃ£o autorizado' }, { status: 401 })
     }
 
-    const limited = checkRateLimit(`carousel:ideas:${user.id}:${getClientIp(req)}`, 30, 60 * 60 * 1000)
+    const limited = await checkRateLimit(`carousel:ideas:${user.id}`, 20, 60 * 60 * 1000)
     if (!limited.allowed) {
       return rateLimitResponse(limited.resetAt)
     }

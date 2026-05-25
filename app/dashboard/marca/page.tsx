@@ -35,6 +35,9 @@ const emptyBrand = {
   isDefault: true,
 }
 
+const LOGO_BUCKET = 'brand-assets'
+const ALLOWED_LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
+
 export default function BrandKitPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -95,6 +98,7 @@ export default function BrandKitPage() {
   async function uploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
+    if (!ALLOWED_LOGO_TYPES.has(file.type) || file.size > 5 * 1024 * 1024) return
     setUploading(true)
 
     const {
@@ -108,10 +112,13 @@ export default function BrandKitPage() {
 
     const ext = file.name.split('.').pop()
     const path = `${user.id}/brand_logos/${selectedBrandId || 'brand'}_${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('slides').upload(path, file, { upsert: true })
+    const { error } = await supabase.storage.from(LOGO_BUCKET).upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+    })
 
     if (!error) {
-      const { data } = supabase.storage.from('slides').getPublicUrl(path)
+      const { data } = supabase.storage.from(LOGO_BUCKET).getPublicUrl(path)
       setForm((current) => ({ ...current, logoUrl: data.publicUrl }))
     }
     setUploading(false)

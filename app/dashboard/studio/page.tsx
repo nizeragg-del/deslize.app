@@ -208,10 +208,10 @@ function CarouselStudioCanvas() {
     if (requestedBrandId) setSelectedBrandId(requestedBrandId)
   }, [initialPrompt, requestedBrandId, requestedProjectId])
 
-  const buildNodesFromCarousel = (carousel: any, baseX: number, baseY: number) => {
+  const buildNodesFromCarousel = async (carousel: any, baseX: number, baseY: number) => {
     const html = carousel?.html_content || ''
     const slides = splitSlides(html)
-    const urls = getCarouselSlideUrls(supabase, carousel)
+    const urls = await getCarouselSlideUrls(supabase, carousel)
     const count = Math.max(slides.length, urls.length, carousel?.slide_count || 3)
     return Array.from({ length: count }).map((_, index) => ({
       id: `${carousel.id}-slide-${index + 1}`,
@@ -232,7 +232,7 @@ function CarouselStudioCanvas() {
 
     const { data, error } = await supabase
       .from('carousels')
-      .select('id, title, html_content, slide_count, studio_x, studio_y, created_at, slides(slide_index, storage_path)')
+      .select('id, title, html_content, slide_count, studio_x, studio_y, created_at, slides(slide_index, storage_path, storage_bucket)')
       .eq('studio_project_id', projectId)
       .order('created_at', { ascending: true })
 
@@ -243,16 +243,17 @@ function CarouselStudioCanvas() {
       return
     }
 
-    const loadedNodes = (data || []).flatMap((carousel: any, groupIndex: number) => {
+    const nodeGroups = await Promise.all((data || []).map((carousel: any, groupIndex: number) => {
       const baseX = typeof carousel.studio_x === 'number' ? carousel.studio_x : groupIndex * (SLIDE_W + GAP) * 3
       const baseY = typeof carousel.studio_y === 'number' ? carousel.studio_y : groupIndex * (SLIDE_H + 120)
       return buildNodesFromCarousel(carousel, baseX, baseY)
-    })
+    }))
+    const loadedNodes = nodeGroups.flat()
 
     setNodes(loadedNodes)
     const latest = (data || [])[data?.length ? data.length - 1 : 0]
     setHtmlContent(latest?.html_content || '')
-    setSlideUrls(latest ? getCarouselSlideUrls(supabase, latest) : [])
+    setSlideUrls(latest ? await getCarouselSlideUrls(supabase, latest) : [])
     setTopic(latest?.title || '')
     setStatus(loadedNodes.length ? 'Projeto carregado. Gere novos carrosséis ou reorganize a lousa.' : 'Projeto vazio. Crie o primeiro carrossel.')
     setStudioLoading(false)
@@ -1025,8 +1026,8 @@ function CarouselStudioCanvas() {
                       dangerouslySetInnerHTML={{
                         __html: DOMPurify.sanitize(node.html, {
                           FORCE_BODY: true,
-                          ADD_TAGS: ['style', 'link'],
-                          ADD_ATTR: ['href', 'rel', 'type'],
+                          FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'style', 'link'],
+                          FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
                         }),
                       }}
                     />
@@ -1197,8 +1198,8 @@ function CarouselStudioCanvas() {
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(htmlContent, {
               FORCE_BODY: true,
-              ADD_TAGS: ['style', 'link'],
-              ADD_ATTR: ['href', 'rel', 'type'],
+              FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'style', 'link'],
+              FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
             }),
           }}
         />
@@ -1231,8 +1232,8 @@ function CarouselStudioCanvas() {
                           dangerouslySetInnerHTML={{
                             __html: DOMPurify.sanitize(node.html, {
                               FORCE_BODY: true,
-                              ADD_TAGS: ['style', 'link'],
-                              ADD_ATTR: ['href', 'rel', 'type'],
+                              FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'style', 'link'],
+                              FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
                             }),
                           }}
                         />

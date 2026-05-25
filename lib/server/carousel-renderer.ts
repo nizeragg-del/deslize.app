@@ -1,9 +1,12 @@
 import puppeteer from 'puppeteer-core'
+import { isPrivateOrLocalHostname } from '@/lib/server/input-safety'
 
 type SupabaseLike = {
   storage: any
   from: (table: string) => any
 }
+
+const CAROUSEL_SLIDES_BUCKET = 'carousel-slides'
 
 export async function renderCarouselToPngs({
   supabase,
@@ -56,6 +59,43 @@ export async function renderCarouselToPngs({
 
   try {
     const page = await browser.newPage()
+    await page.setJavaScriptEnabled(false)
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const url = request.url()
+      const resourceType = request.resourceType()
+
+      if (resourceType === 'document' || url.startsWith('data:') || url.startsWith('blob:')) {
+        request.continue()
+        return
+      }
+
+      try {
+        const parsedUrl = new URL(url)
+        const host = parsedUrl.hostname
+        const allowedHosts = [
+          'fonts.googleapis.com',
+          'fonts.gstatic.com',
+          'api.dicebear.com',
+        ]
+        const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+          ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+          : ''
+
+        if (
+          allowedHosts.includes(host) ||
+          host === supabaseHost ||
+          (resourceType === 'image' && parsedUrl.protocol === 'https:' && !isPrivateOrLocalHostname(host))
+        ) {
+          request.continue()
+          return
+        }
+      } catch {
+        // Fall through to abort malformed URLs.
+      }
+
+      request.abort()
+    })
     await page.setViewport({ width: SLIDE_W, height: SLIDE_H, deviceScaleFactor: DPR })
 
     const fullHtml = `
@@ -66,7 +106,6 @@ export async function renderCarouselToPngs({
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           ${extractedLinks.join('\n          ')}
-          <script src="https://cdn.tailwindcss.com"></script>
           <style>
             * { box-sizing: border-box; }
             body { margin: 0; padding: 0; background: #0A0A0F; color: white; font-family: sans-serif; }
@@ -88,6 +127,41 @@ export async function renderCarouselToPngs({
             .progress-track { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
             .progress-fill { height: 100%; background: white; border-radius: 2px; }
             .progress-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); white-space: nowrap; }
+            .flex { display: flex; }
+            .inline-block { display: inline-block; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .flex-col { flex-direction: column; }
+            .items-center { align-items: center; }
+            .justify-center { justify-content: center; }
+            .gap-3 { gap: 0.75rem; }
+            .gap-6 { gap: 1.5rem; }
+            .my-2 { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+            .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+            .mt-1 { margin-top: 0.25rem; }
+            .mb-1 { margin-bottom: 0.25rem; }
+            .ml-1 { margin-left: 0.25rem; }
+            .mr-2 { margin-right: 0.5rem; }
+            .p-3 { padding: 0.75rem; }
+            .rounded-xl { border-radius: 0.75rem; }
+            .border { border-width: 1px; border-style: solid; }
+            .border-red-500\/20 { border-color: rgba(239,68,68,0.2); }
+            .border-emerald-500\/20 { border-color: rgba(16,185,129,0.2); }
+            .bg-red-500\/5 { background-color: rgba(239,68,68,0.05); }
+            .bg-emerald-500\/5 { background-color: rgba(16,185,129,0.05); }
+            .font-bold { font-weight: 700; }
+            .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+            .text-xs { font-size: 0.75rem; line-height: 1rem; }
+            .text-\[11px\] { font-size: 11px; line-height: 1rem; }
+            .text-white { color: #fff; }
+            .text-white\/60 { color: rgba(255,255,255,0.6); }
+            .text-white\/70 { color: rgba(255,255,255,0.7); }
+            .text-red-400 { color: #f87171; }
+            .text-emerald-400 { color: #34d399; }
+            .uppercase { text-transform: uppercase; }
+            .tracking-widest { letter-spacing: 0.1em; }
+            .w-4 { width: 1rem; }
+            .h-4 { height: 1rem; }
           </style>
           <style>${extractedStyles}</style>
           <style>
@@ -137,7 +211,14 @@ export async function renderCarouselToPngs({
     await new Promise(resolve => setTimeout(resolve, 1200))
 
     const uploadedUrls: string[] = []
-    const slideRows: Array<{ carousel_id: string; slide_index: number; storage_path: string; width: number; height: number }> = []
+    const slideRows: Array<{
+      carousel_id: string
+      slide_index: number
+      storage_path: string
+      storage_bucket: string
+      width: number
+      height: number
+    }> = []
 
     for (let i = 0; i < slideCount; i++) {
       const hasSlide = await page.evaluate((index) => {
@@ -167,7 +248,7 @@ export async function renderCarouselToPngs({
       const fileName = `${userId}/${carouselId}/slide_${i + 1}.png`
 
       const { error: uploadError } = await supabase.storage
-        .from('slides')
+        .from(CAROUSEL_SLIDES_BUCKET)
         .upload(fileName, screenshotBuffer, {
           contentType: 'image/png',
           upsert: true
@@ -181,12 +262,13 @@ export async function renderCarouselToPngs({
         carousel_id: carouselId,
         slide_index: i,
         storage_path: fileName,
+        storage_bucket: CAROUSEL_SLIDES_BUCKET,
         width: 1080,
         height: 1350
       })
 
       const { data: signedUrlData } = await supabase.storage
-        .from('slides')
+        .from(CAROUSEL_SLIDES_BUCKET)
         .createSignedUrl(fileName, 60 * 60 * 24)
 
       if (signedUrlData?.signedUrl) {

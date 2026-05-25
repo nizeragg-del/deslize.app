@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { stripe, sanitizeEnvValue } from '@/utils/stripe/server'
 import { getPlanPriceId } from '@/utils/stripe/plans'
 import { createClient } from '@/utils/supabase/server'
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const limited = checkRateLimit(`stripe:checkout:${user.id}:${getClientIp(req)}`, 12, 60 * 60 * 1000)
+    const limited = await checkRateLimit(`stripe:checkout:${user.id}`, 12, 60 * 60 * 1000)
     if (!limited.allowed) {
       return rateLimitResponse(limited.resetAt)
     }

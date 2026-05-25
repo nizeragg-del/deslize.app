@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/utils/supabase/server'
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rate-limit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rate-limit'
+import { sanitizeCarouselSlidesHtml } from '@/lib/server/sanitize-carousel-html'
+import { safeCssColor, safeFontFamily, safeHttpsUrl } from '@/lib/server/input-safety'
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const limited = checkRateLimit(`carousel:adjust:${user.id}:${getClientIp(req)}`, 20, 60 * 60 * 1000)
+    const limited = await checkRateLimit(`carousel:adjust:${user.id}`, 12, 60 * 60 * 1000)
     if (!limited.allowed) {
       return rateLimitResponse(limited.resetAt)
     }
@@ -38,18 +40,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Instrução muito longa para ajuste.' }, { status: 413 })
     }
 
-    const pColor = brand?.primaryColor || '#7C3AED'
-    const sColor = brand?.secondaryColor || '#06B6D4'
-    const bgColor = brand?.bgColor || '#0A0A0F'
-    const fontDisplay = brand?.fontDisplay || 'Outfit'
-    const fontBody = brand?.fontBody || 'Inter'
-    let logoUrl = typeof brand?.logoUrl === 'string' ? brand.logoUrl.trim() : ''
-    try {
-      const parsedLogoUrl = logoUrl ? new URL(logoUrl) : null
-      if (parsedLogoUrl && parsedLogoUrl.protocol !== 'https:') logoUrl = ''
-    } catch {
-      logoUrl = ''
-    }
+    const pColor = safeCssColor(brand?.primaryColor, '#7C3AED')
+    const sColor = safeCssColor(brand?.secondaryColor, '#06B6D4')
+    const bgColor = safeCssColor(brand?.bgColor, '#0A0A0F')
+    const fontDisplay = safeFontFamily(brand?.fontDisplay, 'Outfit')
+    const fontBody = safeFontFamily(brand?.fontBody, 'Inter')
+    const logoUrl = safeHttpsUrl(brand?.logoUrl)
     const safeLogoUrl = logoUrl.replace(/"/g, '&quot;')
     const brandName = brand?.name || 'suamarca'
     const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -391,7 +387,8 @@ REGRAS E DIRETRIZES DE AJUSTE:
       updatedHtml = updatedHtml.split('```')[1].split('```')[0].trim()
     }
 
-    const finalUpdatedHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${updatedHtml}`
+    const sanitizedUpdatedHtml = sanitizeCarouselSlidesHtml(updatedHtml)
+    const finalUpdatedHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${sanitizedUpdatedHtml}`
 
     return NextResponse.json({ 
       success: true, 

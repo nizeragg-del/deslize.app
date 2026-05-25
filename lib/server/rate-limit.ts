@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 type Bucket = {
   count: number
   resetAt: number
+}
+
+type PersistentRateLimitRow = {
+  allowed: boolean
+  remaining: number
+  reset_at: string
 }
 
 const buckets = new Map<string, Bucket>()
@@ -13,7 +20,7 @@ export function getClientIp(req: Request) {
   return req.headers.get('x-real-ip') || 'unknown'
 }
 
-export function checkRateLimit(key: string, limit: number, windowMs: number) {
+function checkMemoryRateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now()
   const current = buckets.get(key)
 
@@ -28,6 +35,49 @@ export function checkRateLimit(key: string, limit: number, windowMs: number) {
 
   current.count += 1
   return { allowed: true, remaining: Math.max(0, limit - current.count), resetAt: current.resetAt }
+}
+
+export async function checkRateLimit(key: string, limit: number, windowMs: number) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return checkMemoryRateLimit(key, limit, windowMs)
+  }
+
+  try {
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    )
+
+    const { data, error } = await supabaseAdmin
+      .rpc('check_api_rate_limit', {
+        p_key: key,
+        p_limit: limit,
+        p_window_seconds: Math.ceil(windowMs / 1000),
+      })
+      .single()
+
+    const row = data as PersistentRateLimitRow | null
+
+    if (error || !row) {
+      console.error('Persistent rate limit failed, using memory fallback:', error)
+      return checkMemoryRateLimit(key, limit, windowMs)
+    }
+
+    return {
+      allowed: Boolean(row.allowed),
+      remaining: Number(row.remaining || 0),
+      resetAt: new Date(row.reset_at).getTime(),
+    }
+  } catch (error) {
+    console.error('Unexpected persistent rate limit failure:', error)
+    return checkMemoryRateLimit(key, limit, windowMs)
+  }
 }
 
 export function rateLimitResponse(resetAt: number) {

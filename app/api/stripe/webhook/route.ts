@@ -27,16 +27,41 @@ export async function POST(req: Request) {
       .from('stripe_webhook_events')
       .insert({
         id: event.id,
-        event_type: event.type
+        event_type: event.type,
+        status: 'processing',
+        error_message: null,
       })
 
     if (eventInsertError) {
       if (eventInsertError.code === '23505') {
-        return NextResponse.json({ received: true, duplicate: true })
-      }
+        const { data: existingEvent } = await supabaseAdmin
+          .from('stripe_webhook_events')
+          .select('status')
+          .eq('id', event.id)
+          .single()
 
-      console.error('Webhook idempotency insert failed:', eventInsertError)
-      return NextResponse.json({ error: 'Webhook idempotency failed' }, { status: 500 })
+        if (existingEvent?.status === 'succeeded') {
+          return NextResponse.json({ received: true, duplicate: true })
+        }
+
+        if (existingEvent?.status === 'processing') {
+          return NextResponse.json({ error: 'Webhook already processing' }, { status: 409 })
+        }
+
+        await supabaseAdmin
+          .from('stripe_webhook_events')
+          .update({
+            status: 'processing',
+            error_message: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', event.id)
+          .neq('status', 'processing')
+      }
+      else {
+        console.error('Webhook idempotency insert failed:', eventInsertError)
+        return NextResponse.json({ error: 'Webhook idempotency failed' }, { status: 500 })
+      }
     }
 
     switch (event.type) {
@@ -153,9 +178,27 @@ export async function POST(req: Request) {
         console.log(`Unhandled event type ${event.type}`)
     }
 
+    await supabaseAdmin
+      .from('stripe_webhook_events')
+      .update({
+        status: 'succeeded',
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', event.id)
+
     return NextResponse.json({ received: true })
   } catch (error: any) {
     console.error('Webhook handler error:', error)
+    await supabaseAdmin
+      .from('stripe_webhook_events')
+      .update({
+        status: 'failed',
+        error_message: String(error?.message || error).slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', event.id)
+
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
   }
 }
