@@ -560,12 +560,9 @@ export async function POST(req: Request) {
       .funnel-step { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 10px 12px !important; border-radius: 12px !important; background: rgba(255,255,255,0.052) !important; border-left: 3px solid ${pColor} !important; position: relative !important; z-index: 10 !important; }
       .ingredient-note { width: 100% !important; padding: 12px !important; border-radius: 14px !important; background: rgba(255,255,255,0.04) !important; border: 1px dashed rgba(255,255,255,0.18) !important; font-size: 12px !important; line-height: 1.35 !important; color: rgba(255,255,255,0.78) !important; position: relative !important; z-index: 10 !important; }
       .image-slot { width: 100% !important; height: 82px !important; border-radius: 16px !important; background: linear-gradient(135deg, ${pColor}22, ${sColor}18) !important; border: 1px solid rgba(255,255,255,0.1) !important; position: relative !important; z-index: 10 !important; overflow: hidden !important; }
-      .photo-card, .photo-frame, .photo-strip { position: relative !important; z-index: 10 !important; width: 100% !important; overflow: hidden !important; border: 1px solid rgba(255,255,255,0.12) !important; background: rgba(255,255,255,0.045) !important; }
-      .photo-card { height: 116px !important; border-radius: 18px !important; }
-      .photo-frame { height: 150px !important; border-radius: 20px !important; }
-      .photo-strip { height: 76px !important; border-radius: 16px !important; }
-      .photo-card img, .photo-frame img, .photo-strip img { display: block !important; width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; opacity: 0.9 !important; }
-      .photo-card::after, .photo-frame::after, .photo-strip::after { content: "" !important; position: absolute !important; inset: 0 !important; background: linear-gradient(180deg, transparent, rgba(0,0,0,0.28)) !important; pointer-events: none !important; }
+      .photo-bg { position: absolute !important; inset: 0 !important; z-index: 0 !important; overflow: hidden !important; pointer-events: none !important; }
+      .photo-bg-img { display: block !important; width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; opacity: 0.55 !important; filter: saturate(0.85) contrast(1.06) !important; }
+      .photo-bg::after { content: "" !important; position: absolute !important; inset: 0 !important; z-index: 1 !important; background: linear-gradient(90deg, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.74) 42%, rgba(0,0,0,0.38) 100%), linear-gradient(180deg, rgba(0,0,0,0.34), rgba(0,0,0,0.72)) !important; pointer-events: none !important; }
     `
 
     themeRules += `
@@ -730,10 +727,11 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
   * Área útil obrigatória: <div class="slide-content">...conteúdo principal...</div>
   * Componentes profissionais opcionais: .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card, .connector-line, .score-row, .score-label, .score-value, .versus-card, .winner-badge, .metric-strip, .mini-chart, .diagnostic-card, .proof-card, .ui-panel, .quote-note, .status-chip, .menu-tag, .checkline, .map-pin-row, .feature-list, .funnel-step, .ingredient-note, .image-slot
-  * Componentes de imagem curada: .photo-card, .photo-frame, .photo-strip
+  * Imagem de fundo curada: .photo-bg e .photo-bg-img
 
 ESTRUTURA OBRIGATÓRIA DE CADA SLIDE:
 <div class="ig-slide">
+  ...opcionalmente <div class="photo-bg"><img class="photo-bg-img" src="URL_DO_ASSET" alt="..."></div> apenas se houver imagem curada...
   <div class="slide-tag">...</div>
   ${logoMarkup}
   <div class="slide-content">

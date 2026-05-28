@@ -159,10 +159,12 @@ ${assets
   .join('\n')}
 
 REGRAS PARA IMAGENS:
-- Use no maximo 2 imagens no carrossel inteiro.
-- Prefira slides 2, 3 ou 5. Evite imagem no slide 1 se o titulo for grande.
-- A imagem deve ficar dentro de .photo-card, .photo-strip ou .photo-frame.
-- Nunca coloque texto diretamente sobre foto sem overlay/card separado.
-- Se usar imagem em um slide, reduza o texto desse slide.
+- Use imagem apenas como plano de fundo atmosferico, nunca como card, sticker ou foto solta no conteudo.
+- A IA deve decidir o melhor slide para usar imagem. Use no maximo 2 slides com foto.
+- Para usar uma imagem, coloque este bloco como primeiro filho de .ig-slide, antes da tag e logo:
+  <div class="photo-bg"><img class="photo-bg-img" src="URL_DO_ASSET" alt="ALT_DO_ASSET"></div>
+- Nao coloque texto dentro de .photo-bg.
+- O overlay escuro ja e aplicado pelo CSS. Mesmo assim, mantenha textos curtos no slide com foto.
+- Evite foto no slide 1 se o titulo for longo. Prefira slide de contexto, prova, desejo ou CTA.
 `
 }
