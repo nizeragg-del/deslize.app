@@ -45,7 +45,19 @@ const ALLOWED_ATTR = [
   'src',
 ]
 
-const SAFE_STYLE_PROPERTY = /^(background|background-color|background-image|border|border-color|border-radius|border-left|color|display|gap|height|left|margin|margin-bottom|margin-top|opacity|padding|position|right|top|width|z-index)\s*:/i
+const SAFE_STYLE_PROPERTY = /^(background|background-color|background-image|border|border-color|border-radius|border-left|color|display|gap|height|left|margin|margin-bottom|margin-top|object-fit|object-position|opacity|padding|position|right|top|width|z-index)\s*:/i
+const SAFE_IMAGE_HOSTS = [
+  process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host : '',
+  'images.pexels.com',
+].filter(Boolean)
+const FORBIDDEN_CLASS_PATTERNS = [
+  /^text-(base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl|\[)/,
+  /^(leading|tracking)-\[/,
+  /^(my|mt|mb|py|pt|pb)-(5|6|7|8|9|10|11|12|14|16|20|24|28|32)$/,
+  /^(h|min-h|max-h|w|min-w|max-w)-\[/,
+  /^scale-/,
+  /^-?translate-/,
+]
 
 function sanitizeStyle(style: string) {
   return style
@@ -53,6 +65,14 @@ function sanitizeStyle(style: string) {
     .map((part) => part.trim())
     .filter((part) => part && SAFE_STYLE_PROPERTY.test(part) && !/url\s*\(|expression\s*\(|javascript:/i.test(part))
     .join('; ')
+}
+
+function sanitizeClassNames(className: string) {
+  return className
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part && !FORBIDDEN_CLASS_PATTERNS.some((pattern) => pattern.test(part)))
+    .join(' ')
 }
 
 export function sanitizeCarouselSlidesHtml(html: string) {
@@ -66,8 +86,22 @@ export function sanitizeCarouselSlidesHtml(html: string) {
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseenter', 'onmouseleave'],
   })
 
-  return sanitized.replace(/\sstyle=(["'])(.*?)\1/gi, (_match, quote, value) => {
-    const safeStyle = sanitizeStyle(value)
-    return safeStyle ? ` style=${quote}${safeStyle}${quote}` : ''
-  })
+  return sanitized
+    .replace(/\sstyle=(["'])(.*?)\1/gi, (_match, quote, value) => {
+      const safeStyle = sanitizeStyle(value)
+      return safeStyle ? ` style=${quote}${safeStyle}${quote}` : ''
+    })
+    .replace(/\sclass=(["'])(.*?)\1/gi, (_match, quote, value) => {
+      const safeClassName = sanitizeClassNames(value)
+      return safeClassName ? ` class=${quote}${safeClassName}${quote}` : ''
+    })
+    .replace(/\ssrc=(["'])(.*?)\1/gi, (_match, quote, value) => {
+      try {
+        const url = new URL(value)
+        if (url.protocol !== 'https:' || !SAFE_IMAGE_HOSTS.includes(url.host)) return ''
+        return ` src=${quote}${url.toString()}${quote}`
+      } catch {
+        return ''
+      }
+    })
 }

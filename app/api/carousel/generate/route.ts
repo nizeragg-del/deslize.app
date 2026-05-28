@@ -6,8 +6,184 @@ import { renderCarouselToPngs } from '@/lib/server/carousel-renderer'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rate-limit'
 import { sanitizeCarouselSlidesHtml } from '@/lib/server/sanitize-carousel-html'
 import { safeCssColor, safeFontFamily, safeHttpsUrl } from '@/lib/server/input-safety'
+import { buildVisualAssetsPrompt, getCarouselVisualAssets } from '@/lib/server/visual-assets'
 
 export const maxDuration = 60
+
+type CreativePack = {
+  id: string
+  label: string
+  requiredClasses: string[]
+  slideBlueprint: string[]
+  htmlExample: string
+}
+
+const creativePacks: CreativePack[] = [
+  {
+    id: 'diagnostic-clean',
+    label: 'saude, clinicas, estetica e servicos de confianca',
+    requiredClasses: ['diagnostic-card', 'checkline'],
+    slideBlueprint: [
+      'Slide 1: hook de diagnostico com linguagem de confianca.',
+      'Slide 2: um sinal claro usando .diagnostic-card.',
+      'Slide 3: checklist curto com .checkline.',
+      'Slide 4: prova/criterio clinico usando .proof-card ou .diagnostic-card.',
+      'Slide 5: recomendacao pratica com .checkline.',
+      'Slide 6: erro comum ou alerta preventivo com .diagnostic-card.',
+      'Slide 7: CTA para avaliacao/agendamento usando .proof-card.',
+    ],
+    htmlExample: '<div class="diagnostic-card"><div class="font-bold text-sm mb-1">Sinal de alerta</div><div class="text-xs text-white/70">Frase curta, segura e especifica.</div></div>',
+  },
+  {
+    id: 'metric-board',
+    label: 'financas, negocios, vendas e gestao',
+    requiredClasses: ['metric-strip', 'mini-chart'],
+    slideBlueprint: [
+      'Slide 1: promessa numerica ou resultado de negocio.',
+      'Slide 2: problema financeiro com .metric-strip.',
+      'Slide 3: antes/depois com .mini-chart.',
+      'Slide 4: comparacao objetiva em .metric-strip.',
+      'Slide 5: acao pratica com .insight-card.',
+      'Slide 6: erro de gestao com .proof-card.',
+      'Slide 7: CTA para diagnostico/simulacao com .metric-strip.',
+    ],
+    htmlExample: '<div class="metric-strip"><div><b>Dia 1</b><small>Mapear saidas</small></div><div><b>Dia 4</b><small>Cortar vazios</small></div><div><b>Dia 7</b><small>Prever lucro</small></div></div>',
+  },
+  {
+    id: 'growth-system',
+    label: 'marketing, social media, infoprodutos e lancamentos',
+    requiredClasses: ['funnel-step', 'proof-card'],
+    slideBlueprint: [
+      'Slide 1: promessa de crescimento ou conversao.',
+      'Slide 2: gargalo principal usando .funnel-step.',
+      'Slide 3: mecanismo/funil usando .funnel-step.',
+      'Slide 4: prova ou objecao vs resposta com .proof-card.',
+      'Slide 5: passo acionavel com .funnel-step.',
+      'Slide 6: erro comum com .proof-card.',
+      'Slide 7: CTA para direct/auditoria usando .funnel-step.',
+    ],
+    htmlExample: '<div class="funnel-step"><b>01</b><span>Promessa especifica antes de trafego.</span></div>',
+  },
+  {
+    id: 'menu-editorial',
+    label: 'gastronomia, restaurantes, delivery e alimentos',
+    requiredClasses: ['menu-tag', 'ingredient-note'],
+    slideBlueprint: [
+      'Slide 1: desejo/ocasiao de consumo.',
+      'Slide 2: criterio de escolha com .menu-tag.',
+      'Slide 3: ingrediente ou beneficio com .ingredient-note.',
+      'Slide 4: comparacao de opcoes usando .versus-card.',
+      'Slide 5: recomendacao pratica com .menu-tag.',
+      'Slide 6: detalhe sensorial com .ingredient-note.',
+      'Slide 7: CTA de pedido/reserva com .menu-tag.',
+    ],
+    htmlExample: '<div class="menu-tag">Escolha do chef</div><div class="ingredient-note">Ingrediente, textura e beneficio em uma frase.</div>',
+  },
+  {
+    id: 'moodboard-premium',
+    label: 'moda, beleza, luxo, arquitetura e estetica premium',
+    requiredClasses: ['quote-note', 'image-slot'],
+    slideBlueprint: [
+      'Slide 1: tese editorial premium com muito espaco negativo.',
+      'Slide 2: principio visual com .quote-note.',
+      'Slide 3: detalhe/mood usando .image-slot.',
+      'Slide 4: comparacao elegante com .versus-card.',
+      'Slide 5: regra pratica com .quote-note.',
+      'Slide 6: erro de composicao com .insight-card.',
+      'Slide 7: CTA aspiracional com .quote-note.',
+    ],
+    htmlExample: '<div class="quote-note"><div class="font-bold text-sm mb-1">Regra de estilo</div><div class="text-xs text-white/70">Um detalhe muda a percepcao do conjunto.</div></div>',
+  },
+  {
+    id: 'versus-scoreboard',
+    label: 'games, streaming, entretenimento, esportes e comparativos',
+    requiredClasses: ['versus-card', 'score-row', 'winner-badge'],
+    slideBlueprint: [
+      'Slide 1: confronto ou veredito claro.',
+      'Slide 2: primeiro competidor usando .score-row.',
+      'Slide 3: segundo competidor usando .score-row.',
+      'Slide 4: comparacao direta usando .versus-card.',
+      'Slide 5: criterio decisivo com .winner-badge.',
+      'Slide 6: estrategia hibrida ou ranking com .score-row.',
+      'Slide 7: CTA de opiniao usando .winner-badge.',
+    ],
+    htmlExample: '<div class="versus-card"><div><b>Opcao A</b><small>Forca principal</small></div><div><b>Opcao B</b><small>Melhor custo</small></div></div>',
+  },
+  {
+    id: 'product-dashboard',
+    label: 'saas, tecnologia, produtividade, apps e atendimento',
+    requiredClasses: ['ui-panel', 'status-chip', 'metric-strip'],
+    slideBlueprint: [
+      'Slide 1: promessa de produto ou automacao.',
+      'Slide 2: dor operacional com .ui-panel.',
+      'Slide 3: fluxo do produto com .status-chip.',
+      'Slide 4: metricas de impacto com .metric-strip.',
+      'Slide 5: feature principal com .ui-panel.',
+      'Slide 6: antes/depois operacional com .status-chip.',
+      'Slide 7: CTA para demo usando .ui-panel.',
+    ],
+    htmlExample: '<div class="ui-panel"><div class="status-chip">Automacao ativa</div><div class="text-xs text-white/70 mt-2">Beneficio do produto em uma frase.</div></div>',
+  },
+  {
+    id: 'location-guide',
+    label: 'imobiliario, turismo, eventos, educacao local e servicos locais',
+    requiredClasses: ['map-pin-row', 'feature-list'],
+    slideBlueprint: [
+      'Slide 1: decisao ligada a lugar, bairro ou rota.',
+      'Slide 2: criterio de localizacao com .map-pin-row.',
+      'Slide 3: checklist de decisao com .feature-list.',
+      'Slide 4: comparacao de regioes/opcoes com .versus-card.',
+      'Slide 5: dado objetivo com .map-pin-row.',
+      'Slide 6: erro comum de escolha com .feature-list.',
+      'Slide 7: CTA para simulacao/visita usando .map-pin-row.',
+    ],
+    htmlExample: '<div class="map-pin-row"><span>Localizacao boa combina acesso, rotina e liquidez.</span></div>',
+  },
+]
+
+function normalizeText(value: unknown) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function getCreativePack(input: string) {
+  const haystack = normalizeText(input)
+  const matchers: Array<[string, string[]]> = [
+    ['diagnostic-clean', ['saude', 'clinica', 'odont', 'estetica', 'terapia', 'medic', 'paciente']],
+    ['metric-board', ['financa', 'invest', 'negocio', 'venda', 'caixa', 'lucro', 'gestao', 'empresa']],
+    ['growth-system', ['marketing', 'social media', 'infoproduto', 'lancamento', 'trafego', 'funil', 'conteudo']],
+    ['menu-editorial', ['gastronomia', 'restaurante', 'delivery', 'hamburg', 'food', 'comida', 'bar']],
+    ['moodboard-premium', ['moda', 'beleza', 'luxo', 'arquitetura', 'decor', 'imagem', 'look']],
+    ['versus-scoreboard', ['game', 'streaming', 'netflix', 'prime', 'esporte', 'jogo', 'comparativo']],
+    ['product-dashboard', ['saas', 'software', 'tecnologia', 'produtividade', 'app', 'atendimento', 'automacao']],
+    ['location-guide', ['imobiliario', 'turismo', 'evento', 'bairro', 'apartamento', 'local', 'educacao local']],
+  ]
+  const selectedId = matchers.find(([, words]) => words.some((word) => haystack.includes(word)))?.[0] || 'growth-system'
+  return creativePacks.find((pack) => pack.id === selectedId) || creativePacks[2]
+}
+
+function buildCreativePackRules(pack: CreativePack) {
+  return `
+PACK CRIATIVO OBRIGATORIO: ${pack.id}
+Territorio visual: ${pack.label}
+Classes obrigatorias deste pack: ${pack.requiredClasses.map((className) => `.${className}`).join(', ')}
+
+REGRAS DURAS DO PACK:
+- O carrossel deve parecer criado para este nicho, nao apenas recolorido.
+- Use pelo menos uma das classes obrigatorias do pack em 5 dos 7 slides. Se houver menos de 7 slides, use em todos os slides intermediarios.
+- Nao use o mesmo esqueleto em todos os slides. Hero, checklist, comparacao, prova, passo pratico e CTA devem ter composicoes diferentes.
+- Slides 2 a 6 devem conter um componente visual do pack. Slide 1 pode ser mais editorial. Slide final deve usar um componente do pack no CTA.
+- Nao use classes de outros packs como elemento principal, exceto quando a blueprint permitir comparacao.
+
+BLUEPRINT DO CARROSSEL:
+${pack.slideBlueprint.map((line) => `- ${line}`).join('\n')}
+
+EXEMPLO DE COMPONENTE DO PACK:
+${pack.htmlExample}
+`
+}
 
 export async function POST(req: Request) {
   let creditConsumed = false
@@ -109,33 +285,13 @@ export async function POST(req: Request) {
     const brandOffer = brand?.mainOffer || 'nÃ£o informado'
     const brandPains = brand?.audiencePains || 'nÃ£o informado'
     const brandContentGoal = brand?.contentGoal || 'gerar interesse e conversas'
+    const creativeInput = `${topic} ${format} ${tone} ${brandName} ${brandNiche} ${brandAudience} ${brandOffer} ${brandPains} ${brandContentGoal}`
+    const selectedCreativePack = getCreativePack(creativeInput)
     const safeBrandName = String(brandName).replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const logoMarkup = safeLogoUrl
       ? `<div class="slide-logo"><img class="slide-logo-img" src="${safeLogoUrl}" alt="${safeBrandName}"></div>`
       : `<div class="slide-logo"><div class="slide-logo-dot" style="background-color: ${pColor}"></div><span class="slide-logo-text">${safeBrandName}</span></div>`
-    const creativePackRules = `
-CLASSIFICACAO DE NICHO E PACK CRIATIVO:
-- Antes de escrever o HTML, classifique mentalmente o nicho usando o Brand Kit, o tema e a intenção do post. Não mostre essa classificação no retorno.
-- Escolha apenas 1 pack criativo principal e 1 componente de apoio por slide. Não misture vários packs no mesmo carrossel.
-- Saúde, clínicas, estética, terapias: use "diagnostic-clean" com .diagnostic-card, .checkline, selos discretos, linguagem de confiança e prova.
-- Finanças, investimentos, vendas, negócios: use "metric-board" com .metric-strip, .mini-chart, números curtos, alertas e comparação antes/depois.
-- Marketing, social media, infoprodutos, lançamentos: use "growth-system" com .funnel-step, .proof-card, objeção vs resposta e blocos de promessa.
-- Gastronomia, restaurantes, delivery: use "menu-editorial" com .menu-tag, .ingredient-note, preço/benefício e textura editorial leve.
-- Moda, beleza, luxo, arquitetura: use "moodboard-premium" com .quote-note, molduras finas, etiquetas editoriais e bastante espaço negativo.
-- Games, streaming, entretenimento, esportes: use "versus-scoreboard" com .versus-card, .score-row, .winner-badge, ranking e placar compacto.
-- SaaS, tecnologia, produtividade, apps: use "product-dashboard" com .ui-panel, .status-chip, .metric-strip, feature cards e micro dashboard.
-- Imobiliário, turismo, eventos, educação local: use "location-guide" com .map-pin-row, .feature-list, cards de destaque e dados objetivos.
-- Se o nicho não encaixar, use "editorial-authority": título forte, .insight-card, .quote-note e 1 detalhe gráfico recorrente.
-
-PLANEJAMENTO OBRIGATORIO DE SLIDES:
-- Slide 1: promessa/hook específico do nicho.
-- Slide 2: problema ou critério principal.
-- Slide 3: mecanismo, opção ou comparação.
-- Slide 4: prova, dados, checklist ou placar.
-- Slide 5: recomendação prática.
-- Slide 6: insight avançado ou erro comum.
-- Slide 7: CTA simples e contextual.
-`
+    const creativePackRules = buildCreativePackRules(selectedCreativePack)
 
     // Dynamically load all fonts required: user's custom brand fonts + theme specific fallback fonts
     const fontsSet = new Set<string>()
@@ -404,11 +560,18 @@ PLANEJAMENTO OBRIGATORIO DE SLIDES:
       .funnel-step { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 10px 12px !important; border-radius: 12px !important; background: rgba(255,255,255,0.052) !important; border-left: 3px solid ${pColor} !important; position: relative !important; z-index: 10 !important; }
       .ingredient-note { width: 100% !important; padding: 12px !important; border-radius: 14px !important; background: rgba(255,255,255,0.04) !important; border: 1px dashed rgba(255,255,255,0.18) !important; font-size: 12px !important; line-height: 1.35 !important; color: rgba(255,255,255,0.78) !important; position: relative !important; z-index: 10 !important; }
       .image-slot { width: 100% !important; height: 82px !important; border-radius: 16px !important; background: linear-gradient(135deg, ${pColor}22, ${sColor}18) !important; border: 1px solid rgba(255,255,255,0.1) !important; position: relative !important; z-index: 10 !important; overflow: hidden !important; }
+      .photo-card, .photo-frame, .photo-strip { position: relative !important; z-index: 10 !important; width: 100% !important; overflow: hidden !important; border: 1px solid rgba(255,255,255,0.12) !important; background: rgba(255,255,255,0.045) !important; }
+      .photo-card { height: 116px !important; border-radius: 18px !important; }
+      .photo-frame { height: 150px !important; border-radius: 20px !important; }
+      .photo-strip { height: 76px !important; border-radius: 16px !important; }
+      .photo-card img, .photo-frame img, .photo-strip img { display: block !important; width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; opacity: 0.9 !important; }
+      .photo-card::after, .photo-frame::after, .photo-strip::after { content: "" !important; position: absolute !important; inset: 0 !important; background: linear-gradient(180deg, transparent, rgba(0,0,0,0.28)) !important; pointer-events: none !important; }
     `
 
     themeRules += `
 
 DIREÇÃO CRIATIVA AUTORAL:
+- QA VISUAL ANTES DE RESPONDER: se um slide tiver titulo com mais de 32 caracteres, nao inclua paragrafo e card juntos. Se houver 2 cards, o titulo deve ter no maximo 24 caracteres. Se o titulo ocupar 3 linhas, remova qualquer segundo bloco visual.
 - Antes de escrever o HTML, escolha mentalmente um território visual específico para esta marca e este tema. Não explique esse raciocínio no retorno.
 - O território deve nascer do nicho, público, promessa e tom do brief. Evite qualquer aparência de template genérico.
 - Use o ESTILO VISUAL SOLICITADO (${visualTheme}) como direção, não como prisão:
@@ -488,6 +651,16 @@ DIREÇÃO CRIATIVA AUTORAL:
 
     creditConsumed = true
     consumedTransactionId = consumedCreditResult?.transaction_id ?? null
+    const visualAssets = await getCarouselVisualAssets({
+      brandName,
+      niche: brandNiche,
+      topic,
+      packId: selectedCreativePack.id,
+      userId: user.id,
+      supabase: supabaseAdmin,
+    })
+    const visualAssetsPrompt = buildVisualAssetsPrompt(visualAssets)
+
     // Construct the prompt
     const prompt = `
 Você é um designer de produto e copywriter especialista em Instagram de altíssimo nível.
@@ -513,6 +686,8 @@ CONTEXTO ESTRATÃ‰GICO DA MARCA:
 - Objetivo do conteÃºdo: ${brandContentGoal}
 
 ${creativePackRules}
+
+${visualAssetsPrompt}
 
 ${themeRules}
 
@@ -555,6 +730,7 @@ REGRAS DE CÓDIGO HTML (MUITO IMPORTANTE):
   * Número de fundo gigante (opcional): <div class="slide-num-bg">1</div>
   * Área útil obrigatória: <div class="slide-content">...conteúdo principal...</div>
   * Componentes profissionais opcionais: .brand-ribbon, .accent-arc, .soft-grid, .kicker-pill, .stat-card, .insight-card, .connector-line, .score-row, .score-label, .score-value, .versus-card, .winner-badge, .metric-strip, .mini-chart, .diagnostic-card, .proof-card, .ui-panel, .quote-note, .status-chip, .menu-tag, .checkline, .map-pin-row, .feature-list, .funnel-step, .ingredient-note, .image-slot
+  * Componentes de imagem curada: .photo-card, .photo-frame, .photo-strip
 
 ESTRUTURA OBRIGATÓRIA DE CADA SLIDE:
 <div class="ig-slide">
@@ -660,6 +836,16 @@ Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha
 
     const sanitizedHtmlContent = sanitizeCarouselSlidesHtml(htmlContent)
     const finalHtml = `${fontHeaderImport}\n<style>\n${themeStyles}\n</style>\n${sanitizedHtmlContent}`
+    const { count: existingCarouselCount, error: existingCarouselCountError } = await supabaseAdmin
+      .from('carousels')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
+    if (existingCarouselCountError) {
+      console.error('Error checking existing carousels:', existingCarouselCountError)
+    }
+
+    const isFirstGeneration = !existingCarouselCountError && (existingCarouselCount || 0) === 0
 
     // Save the carousel to public.carousels
     const { data: carousel, error: carouselInsertError } = await supabaseAdmin
@@ -715,7 +901,10 @@ Certifique-se de retornar exatamente ${safeSlideCount} slides válidos. Mantenha
       success: true, 
       html: finalHtml,
       carouselId: carousel?.id || null,
-      slideUrls
+      slideUrls,
+      isFirstGeneration,
+      creativePack: selectedCreativePack.id,
+      visualAssets
     })
 
   } catch (error: any) {

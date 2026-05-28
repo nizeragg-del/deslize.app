@@ -645,7 +645,7 @@ function CarouselStudioCanvas() {
         .single()
       if (updatedProfile) {
         setProfile(updatedProfile)
-        if ((updatedProfile.plan || 'free') === 'free') setUpgradeOpen(true)
+        if (data.isFirstGeneration && (updatedProfile.plan || 'free') === 'free') setUpgradeOpen(true)
       }
     } catch (err: any) {
       console.error(err)
@@ -690,9 +690,11 @@ function CarouselStudioCanvas() {
       setSlideUrls([])
       if (targetCarouselId) {
         const slides = splitSlides(nextHtml)
+        const selectedIdSet = new Set(selectedNodeIds)
+        const shouldPatchOnlySelection = selectedIdSet.size > 0
         setNodes((current) =>
           current.map((node) =>
-            node.carouselId === targetCarouselId
+            node.carouselId === targetCarouselId && (!shouldPatchOnlySelection || selectedIdSet.has(node.id))
               ? { ...node, html: slides[node.index], imageUrl: undefined, carouselHtml: nextHtml }
               : node
           )
